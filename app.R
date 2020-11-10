@@ -120,7 +120,15 @@ ui <- fluidPage(
                              options = list( placeholder = 'Please select an option below',
                                              onInitialize = I('function() { this.setValue(""); }')
                                            )
-                             )
+                             ),
+                 
+                 selectizeInput("gen", 
+                                label = "Generation Status",
+                                choices = unique(mergeDF$DIM..Generation.status..4.),
+                                options = list( placeholder = 'Please select an option below',
+                                                onInitialize = I('function() { this.setValue(""); }')
+                                )
+                 )
                ),
                mainPanel(
                  h1("Graphs to be plotted"),
@@ -219,13 +227,17 @@ server <- function(input, output) {
       # if no input, display ogDT
       if (input$year == "2016" & input$geo == "") return(ogDT)
       
-      ogDT %>%
-        filter(ogDT$GEO_NAME == input$geo) %>%
-        filter(ogDT$DIM..Highest.certificate..diploma.or.degree..15. == input$deg) %>%
-        filter(ogDT$DIM..Major.field.of.study...Classification.of.Instructional.Programs..CIP..2016..43. == input$fos) %>%
-        filter(ogDT$DIM..Age..9. == input$age) %>%
-        filter(ogDT$DIM..Sex..3. == input$sex) %>%
-        filter(ogDT$DIM..Immigrant.status..4. == input$immStatus)
+      newDT <- ogDT %>%
+        filter(ogDT$GEO_NAME == input$geo &
+                 ogDT$DIM..Highest.certificate..diploma.or.degree..15. == input$deg &
+                 ogDT$DIM..Major.field.of.study...Classification.of.Instructional.Programs..CIP..2016..43. == input$fos &
+                 ogDT$DIM..Age..9. == input$age &
+                 ogDT$DIM..Sex..3. == input$sex
+                 # Use these 2 attributes for 2nd graph
+                 #& ogDT$DIM..Immigrant.status..4. == input$immStatus &
+                 #ogDT$DIM..Generation.status..4. == input$gen
+               )
+      return(newDT)
     }
   )
   
@@ -233,7 +245,7 @@ server <- function(input, output) {
   output$df <- renderDataTable(filtered_data())
   
   # output$splot <-renderPlot({
-  #   ggplot() + geom_point()
+  #   ggplot(data = filtered_data()) + geom_bar()
   # })
 }
 
