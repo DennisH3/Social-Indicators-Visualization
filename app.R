@@ -5,7 +5,7 @@
 # 11/10/2020 - Completed UI input
 
 # Install shiny package
-#install.packages("shiny")
+install.packages("shiny")
 
 # Load packages
 library(shiny)
@@ -132,8 +132,8 @@ ui <- fluidPage(
                ),
                mainPanel(
                  h1("Graphs to be plotted"),
-                 dataTableOutput("df")
-                 # plotOutput("ecplot")
+                 dataTableOutput("df"),
+                 plotOutput("ecplot")
                )
              )
     ),
@@ -244,9 +244,13 @@ server <- function(input, output) {
   # Output 
   output$df <- renderDataTable(filtered_data())
   
-  # output$splot <-renderPlot({
-  #   ggplot(data = filtered_data()) + geom_bar()
-  # })
+  output$ecplot <- renderPlot({
+     ggplot(data = filtered_data()) +
+      geom_col(mapping = aes(x = input$VM, y = input$deg)) + 
+      labs(title = "Ethnocultural Indicator",
+           x = "Visible Minority",
+           y = input$deg.label)
+  })
 }
 
 # Run the app ----
