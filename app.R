@@ -5,11 +5,12 @@
 # 11/10/2020 - Completed UI input
 
 # Install shiny package
-install.packages("shiny")
+#install.packages("shiny")
 
 # Load packages
 library(shiny)
 library(tidyverse)
+library(data.table)
 
 # Read csv files into a dataframe
 df <- read.csv("98-400-X2016274_English_CSV_data.csv")
@@ -17,7 +18,7 @@ df2 <- read.csv("98-400-X2016275_English_CSV_data.csv")
 
 # Full outer merge of both files
 mergeDF <- merge(df, df2, all = TRUE)
-print(colnames(mergeDF))
+#print(colnames(mergeDF))
 
 # Define UI ----
 ui <- fluidPage(
@@ -80,7 +81,8 @@ ui <- fluidPage(
                  
                  checkboxGroupInput("VM", 
                                     label = "Visible Minority",
-                                    choices = list("Total visible minority population",
+                                    choices = list("Total Visible Minority",
+                                                   "Total visible minority population",
                                                    "South Asian",
                                                    "Chinese",
                                                    "Black",
@@ -131,12 +133,15 @@ ui <- fluidPage(
                  )
                ),
                mainPanel(
-                 h1("Graphs to be plotted"),
+                 h1("Filtered Data Table and Graphs"),
                  dataTableOutput("df"),
-                 plotOutput("ecplot")
+                 dataTableOutput("df2")
+                 #plotOutput("ecplot")
                )
              )
     ),
+    
+    # Second Tab (Can ignore for now)
     tabPanel(
       "Similarities and Differences", fluid = TRUE,
       sidebarLayout(
@@ -219,6 +224,15 @@ server <- function(input, output) {
   # The datatable with the columns of interest (Year, Geography, and the DIM columns)
   ogDT <- select(mergeDF, c(1, 4, 8, 11, 14, 17:24, 27, 30:38, 41:48))
   
+  # Rename the columns
+  setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex", "Chinese", "Black", "Filipino", "Latin American",
+                                   "Arab", "Korean", "Japanese", "Immigrant Status", "Field of Study", "Total Visible Minority",
+                                   "Total visible minority population", "South Asian", "Southeast Asian", "West Asian", 
+                                   "Visible minority, n.i.e.", "Multiple visible minorities", "Not a visible minority",
+                                   "Generation Status", "Total Visible Minority 2", "Total visible minority population 2", 
+                                   "South Asian 2", "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
+                                   "Multiple visible minorities 2", "Not a visible minority 2"))
+  
   # Reactive values ----------------------------------------------------------
   #
   # This reactive will filter ogDT by inputs
@@ -228,29 +242,42 @@ server <- function(input, output) {
       if (input$year == "2016" & input$geo == "") return(ogDT)
       
       newDT <- ogDT %>%
-        filter(ogDT$GEO_NAME == input$geo &
-                 ogDT$DIM..Highest.certificate..diploma.or.degree..15. == input$deg &
-                 ogDT$DIM..Major.field.of.study...Classification.of.Instructional.Programs..CIP..2016..43. == input$fos &
-                 ogDT$DIM..Age..9. == input$age &
-                 ogDT$DIM..Sex..3. == input$sex
+        filter(ogDT$Geography == input$geo &
+                 ogDT$Education == input$deg &
+                 ogDT$`Field of Study` == input$fos &
+                 ogDT$Age == input$age &
+                 ogDT$Sex == input$sex
                  # Use these 2 attributes for 2nd graph
-                 #& ogDT$DIM..Immigrant.status..4. == input$immStatus &
-                 #ogDT$DIM..Generation.status..4. == input$gen
+                 #& ogDT$`Immigrant Status` == input$immStatus &
+                 #ogDT$`Generation Status` == input$gen
                )
       return(newDT)
     }
   )
   
-  # Output 
+  # Select Ethnocultural groups for the first bar plot
+  ec <- reactive ({
+    
+    # From the filtered data select columns based on Visible Minority Widget
+    df <- filtered_data() %>%
+      select(input$VM)
+    
+    # Transpose the data frame
+    df <- as.data.frame(t(as.matrix(df)))
+  })
+  
+  # Output ---------------------------------------------------
   output$df <- renderDataTable(filtered_data())
   
-  output$ecplot <- renderPlot({
-     ggplot(data = filtered_data()) +
-      geom_col(mapping = aes(x = input$VM, y = input$deg)) + 
-      labs(title = "Ethnocultural Indicator",
-           x = "Visible Minority",
-           y = input$deg.label)
-  })
+  output$df2 <- renderDataTable(ec())
+  
+  # output$ecplot <- renderPlot({
+  #    ggplot(data = filtered_data()) +
+  #     geom_col(mapping = aes(x = input$VM, y = input$deg)) + 
+  #     labs(title = "Ethnocultural Indicator",
+  #          x = "Visible Minority",
+  #          y = input$deg.label)
+  # })
 }
 
 # Run the app ----
