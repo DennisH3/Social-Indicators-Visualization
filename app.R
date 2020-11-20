@@ -4,9 +4,6 @@
 # Log:
 # 11/10/2020 - Completed UI input
 
-# Install shiny package
-#install.packages("shiny")
-
 # Load packages
 library(shiny)
 library(tidyverse)
@@ -29,20 +26,20 @@ ui <- fluidPage(
                sidebarPanel(
                  
                  selectizeInput("year", 
-                             label = "Year",
-                             choices = list("2016", 
-                                            "2017",
-                                            "2018", 
-                                            "2019"),
-                             selected = "2016"),
+                                label = "Year",
+                                choices = list("2016", 
+                                               "2017",
+                                               "2018", 
+                                               "2019"),
+                                selected = "2016"),
                  
                  selectizeInput("geo", 
-                             label = "Geography",
-                             choices = unique(mergeDF$GEO_NAME),
-                             options = list( placeholder = 'Please select an option below',
-                                             onInitialize = I('function() { this.setValue(""); }')
-                             )
-                             ),
+                                label = "Geography",
+                                choices = unique(mergeDF$GEO_NAME),
+                                options = list( placeholder = 'Please select an option below',
+                                                onInitialize = I('function() { this.setValue(""); }')
+                                )
+                 ),
                  
                  h4("Framework Components Participation"),
                  
@@ -59,7 +56,7 @@ ui <- fluidPage(
                                                    "Overqualification" = 8,
                                                    "Self-employment" = 9,
                                                    "Precarious employment" = 10)
-                                    ),
+                 ),
                  
                  h4("Indicators"),
                  
@@ -72,12 +69,12 @@ ui <- fluidPage(
                  ),
                  
                  selectizeInput("fos", 
-                             label = "Field of Study", 
-                             choices = sort(unique(mergeDF$DIM..Major.field.of.study...Classification.of.Instructional.Programs..CIP..2016..43.)),
-                             options = list(placeholder = 'Please select an option below',
-                                            onInitialize = I('function() { this.setValue(""); }')
-                              )
-                             ),
+                                label = "Field of Study", 
+                                choices = sort(unique(mergeDF$DIM..Major.field.of.study...Classification.of.Instructional.Programs..CIP..2016..43.)),
+                                options = list(placeholder = 'Please select an option below',
+                                               onInitialize = I('function() { this.setValue(""); }')
+                                )
+                 ),
                  
                  checkboxGroupInput("VM", 
                                     label = "Visible Minority",
@@ -96,33 +93,33 @@ ui <- fluidPage(
                                                    "Visible minority, n.i.e.",
                                                    "Multiple visible minorities",
                                                    "Not a visible minority")
-                                    ),
+                 ),
                  
                  h4("Sub-populations"),
                  
                  selectizeInput("age", 
-                             label = "Age Group",
-                             choices = unique(mergeDF$DIM..Age..9.),
-                             options = list( placeholder = 'Please select an option below',
-                                             onInitialize = I('function() { this.setValue(""); }')
-                             )
-                            ),
+                                label = "Age Group",
+                                choices = unique(mergeDF$DIM..Age..9.),
+                                options = list( placeholder = 'Please select an option below',
+                                                onInitialize = I('function() { this.setValue(""); }')
+                                )
+                 ),
                  
                  selectizeInput("sex", 
-                             label = "Sex",
-                             choices = sort(unique(mergeDF$DIM..Sex..3.), decreasing = TRUE),
-                             options = list( placeholder = 'Please select an option below',
-                                             onInitialize = I('function() { this.setValue(""); }')
-                                           )
-                             ),
+                                label = "Sex",
+                                choices = sort(unique(mergeDF$DIM..Sex..3.), decreasing = TRUE),
+                                options = list( placeholder = 'Please select an option below',
+                                                onInitialize = I('function() { this.setValue(""); }')
+                                )
+                 ),
                  
                  selectizeInput("immStatus", 
-                             label = "Immigration Status",
-                             choices = unique(mergeDF$DIM..Immigrant.status..4.),
-                             options = list( placeholder = 'Please select an option below',
-                                             onInitialize = I('function() { this.setValue(""); }')
-                                           )
-                             ),
+                                label = "Immigration Status",
+                                choices = unique(mergeDF$DIM..Immigrant.status..4.),
+                                options = list( placeholder = 'Please select an option below',
+                                                onInitialize = I('function() { this.setValue(""); }')
+                                )
+                 ),
                  
                  selectizeInput("gen", 
                                 label = "Generation Status",
@@ -134,9 +131,11 @@ ui <- fluidPage(
                ),
                mainPanel(
                  h1("Filtered Data Table and Graphs"),
+                 p("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
+                   Then select the Visible Minorities"),
                  dataTableOutput("df"),
-                 dataTableOutput("df2")
-                 #plotOutput("ecplot")
+                 dataTableOutput("df2"),
+                 plotOutput("ecplot")
                )
              )
     ),
@@ -238,46 +237,80 @@ server <- function(input, output) {
   # This reactive will filter ogDT by inputs
   filtered_data <- reactive(
     {
-      # if no input, display ogDT
-      if (input$year == "2016" & input$geo == "") return(ogDT)
       
-      newDT <- ogDT %>%
-        filter(ogDT$Geography == input$geo &
+      # if no input, display ogDT
+      if (input$year == "2016" & input$geo == "") {
+        return(ogDT)
+      } else {
+        
+        # Require degree, field of study, age, and sex inputs
+        req(input$deg, input$fos, input$age, input$sex)
+        
+        # Filter for these values
+        newDT <- ogDT %>%
+          filter(ogDT$Geography == input$geo &
                  ogDT$Education == input$deg &
                  ogDT$`Field of Study` == input$fos &
                  ogDT$Age == input$age &
                  ogDT$Sex == input$sex
-                 # Use these 2 attributes for 2nd graph
-                 #& ogDT$`Immigrant Status` == input$immStatus &
-                 #ogDT$`Generation Status` == input$gen
-               )
-      return(newDT)
+          # Use these 2 attributes for 2nd graph
+          #& ogDT$`Immigrant Status` == input$immStatus &
+          #ogDT$`Generation Status` == input$gen
+                )
+          return(newDT)
+      }
     }
   )
   
   # Select Ethnocultural groups for the first bar plot
-  ec <- reactive ({
-    
-    # From the filtered data select columns based on Visible Minority Widget
-    df <- filtered_data() %>%
-      select(input$VM)
-    
-    # Transpose the data frame
-    df <- as.data.frame(t(as.matrix(df)))
-  })
+  ec <- reactive (
+    {
+      
+      # Require the filtered table and the Visible Minority input
+      req(filtered_data(), input$VM)
+      
+      # From the filtered data select columns based on Visible Minority Widget
+      df <- filtered_data() %>%
+        select(input$VM)
+      
+      # Transpose the data
+      dft <- as.data.frame(t(as.matrix(df)))
+      
+      # Change row names and column names
+      rownames(dft) <- colnames(df)
+      colnames(dft) <- filtered_data()[,13]
+      
+      # Make the row name into a column
+      dft <- cbind(rownames(dft), data.frame(dft, row.names=NULL))
+      
+      # Name the first column
+      colnames(dft)[1] <- "Visible Minority Group"
+      
+      return(dft)
+    }
+  )
   
   # Output ---------------------------------------------------
-  output$df <- renderDataTable(filtered_data())
+  output$df <- renderDataTable({filtered_data()})
   
-  output$df2 <- renderDataTable(ec())
+  output$df2 <- renderDataTable({ec()})
   
-  # output$ecplot <- renderPlot({
-  #    ggplot(data = filtered_data()) +
-  #     geom_col(mapping = aes(x = input$VM, y = input$deg)) + 
-  #     labs(title = "Ethnocultural Indicator",
-  #          x = "Visible Minority",
-  #          y = input$deg.label)
-  # })
+  output$ecplot <- renderPlot({
+    
+    # Require the ethnocultural data frame
+    req(ec())
+  
+    df <- melt(ec(), id.vars = 'Visible Minority Group')
+    
+    # Plot the column graph
+    ggplot(df, aes(x = `Visible Minority Group`, y = value, fill = variable)) +
+     geom_col(position = "dodge") + 
+     labs(title = "Ethnocultural Indicator",
+          x = "Visible Minority Group",
+          y = "Number of People",
+          fill = "Immigrant Status")
+    
+   })
 }
 
 # Run the app ----
