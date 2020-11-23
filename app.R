@@ -3,6 +3,7 @@
 # Date: 11/02/2020
 # Log:
 # 11/10/2020 - Completed UI input
+# 11/20/2020 - Completed 2 graph outputs
 
 # Load packages
 library(shiny)
@@ -150,12 +151,12 @@ ui <- fluidPage(
                ),
                mainPanel(
                  h1("Filtered Data Table and Graphs"),
-                 p("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
-                   Then select the Visible Minorities"),
+                 h4("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
+                   Then select from either the Visible Minorities. This will produce 2 column graphs"),
                  dataTableOutput("df"),
-                 dataTableOutput("df2"),
+                 #dataTableOutput("df2"),
                  dataTableOutput("df3"),
-                 dataTableOutput("df4"),
+                 #dataTableOutput("df4"),
                  plotOutput("ecplot"),
                  plotOutput("ecplot2")
                )
@@ -255,36 +256,27 @@ server <- function(input, output) {
                                    "Multiple visible minorities 2", "Not a visible minority 2"))
   
   # Reactive values ----------------------------------------------------------
-  
-  # Maybe should include filtering per each widget 
-  #i.e. Geography has a separate filter and updates a global variable
-  
+
   # This reactive will filter ogDT by inputs for Immigrant Status
   filtered_data <- reactive(
     {
       
-      # if no input, display ogDT
-      if (input$year == "2016" & input$geo == "") {
-        return(ogDT)
-      } else {
-        
-        # Require degree, field of study, age, and sex inputs
-        req(input$deg, input$fos, input$age, input$sex)
-        
-        # Filter for these values
-        newDT <- ogDT %>%
-          filter(ogDT$Geography == input$geo &
-                 ogDT$Education == input$deg &
-                 ogDT$`Field of Study` == input$fos &
-                 ogDT$Age == input$age &
-                 ogDT$Sex == input$sex
-          # Use these 2 attributes for 2nd graph
-          #ogDT$`Generation Status` == input$gen
-          # ogDT$Education == input$deg
-                )
-          # The table will be for Immigrant Status
-          return(newDT)
-      }
+      # Require degree, field of study, age, and sex inputs
+      req(input$deg, input$fos, input$age, input$sex)
+      
+      # Filter values
+      newDT <- ogDT
+      
+      if (!is.null(input$geo)) newDT <- filter(newDT, Geography == input$geo)
+      if (!is.null(input$deg)) newDT <- filter(newDT, Education == input$deg)
+      if (!is.null(input$fos)) newDT <- filter(newDT, `Field of Study` == input$fos)
+      if (!is.null(input$age)) newDT <- filter(newDT, Age == input$age)
+      if (!is.null(input$sex)) newDT <- filter(newDT, Sex == input$sex)
+      
+      # Remove rows where column 11 (Immigrant Status is NA)
+      newDT <- newDT[complete.cases(newDT[ , 11]),]
+      
+      return(newDT)
     }
   )
   
@@ -292,11 +284,11 @@ server <- function(input, output) {
   ec <- reactive (
     {
       
-      # Require the filtered table and the Visible Minority input
-      req(filtered_data(), input$VM)
+      # Require Visible Minority input
+      req(input$VM)
       
       # From the filtered data select columns based on Visible Minority Widget
-      df <- filtered_data() %>%
+      df <- newDT %>%
         select(input$VM)
       
       # Transpose the data
@@ -321,20 +313,18 @@ server <- function(input, output) {
     {
       # Require degree, age, and sex inputs
       req(input$deg, input$age, input$sex)
-        
-      # Filter for these values
-      newDT <- ogDT %>%
-        filter(ogDT$Geography == input$geo &
-               ogDT$Education == input$deg &
-               ogDT$Age == input$age &
-               ogDT$Sex == input$sex
-               #ogDT$`Generation Status` == input$gen
-              )
+      
+      # Filter values
+      newDT <- ogDT
+      
+      if (!is.null(input$geo)) newDT <- filter(newDT, Geography == input$geo)
+      if (!is.null(input$deg)) newDT <- filter(newDT, Education == input$deg)
+      if (!is.null(input$age)) newDT <- filter(newDT, Age == input$age)
+      if (!is.null(input$sex)) newDT <- filter(newDT, Sex == input$sex)
       
       # Remove rows where column 23 (Generation Status is NA)
       newDT <- newDT[complete.cases(newDT[ , 23]),]
       
-      # The table will be for Generation Status
       return(newDT)
     }
   )
