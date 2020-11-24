@@ -260,6 +260,10 @@ server <- function(input, output) {
   # This reactive will filter ogDT by inputs for Immigrant Status
   filtered_data <- reactive(
     {
+      # if no input, display ogDT
+      if (input$year == "2016" & input$geo == "") {
+        return(ogDT)
+      } else {
       
       # Require degree, field of study, age, and sex inputs
       req(input$deg, input$fos, input$age, input$sex)
@@ -272,47 +276,47 @@ server <- function(input, output) {
       if (!is.null(input$fos)) newDT <- filter(newDT, `Field of Study` == input$fos)
       if (!is.null(input$age)) newDT <- filter(newDT, Age == input$age)
       if (!is.null(input$sex)) newDT <- filter(newDT, Sex == input$sex)
+      # Use this attribute for 2nd graph
+      #ogDT$`Generation Status` == input$gen
       
-      # Remove rows where column 11 (Immigrant Status is NA)
-      newDT <- newDT[complete.cases(newDT[ , 11]),]
+      # Remove rows where column 13 (Immigrant Status is NA)
+      newDT <- newDT[complete.cases(newDT[ , 13]),]
       
       return(newDT)
     }
-  )
+  })
   
   # Select Ethnocultural groups for the first bar plot
-  ec <- reactive (
-    {
-      
-      # Require Visible Minority input
-      req(input$VM)
-      
-      # From the filtered data select columns based on Visible Minority Widget
-      df <- newDT %>%
-        select(input$VM)
-      
-      # Transpose the data
-      dft <- as.data.frame(t(as.matrix(df)))
-      
-      # Change row names and column names
-      rownames(dft) <- colnames(df)
-      colnames(dft) <- filtered_data()[,13]
-      
-      # Make the row name into a column
-      dft <- cbind(rownames(dft), data.frame(dft, row.names=NULL))
-      
-      # Name the first column
-      colnames(dft)[1] <- "Visible Minority Group"
-      
-      return(dft)
-    }
-  )
+  ec <- reactive ({
+    
+    # Require the filtered table and the Visible Minority input
+    req(filtered_data(), input$VM)
+  
+    # From the filtered data select columns based on Visible Minority 2 Widget
+    df <- filtered_data() %>%
+      select(input$VM)
+    
+    # Transpose the data
+    dft <- as.data.frame(t(as.matrix(df)))
+    
+    # Change row names and column names
+    rownames(dft) <- colnames(df)
+    colnames(dft) <- filtered_data()[,13]
+    
+    # Make the row name into a column
+    dft <- cbind(rownames(dft), data.frame(dft, row.names=NULL))
+    
+    # Name the first column
+    colnames(dft)[1] <- "Visible Minority Group"
+    
+    return(dft)
+  })
   
   # This reactive will filter ogDT by inputs for Generation Status
   filtered_data2 <- reactive(
     {
-      # Require degree, age, and sex inputs
-      req(input$deg, input$age, input$sex)
+      # Require Geography, degree, age, and sex inputs
+      req(input$geo, input$deg, input$age, input$sex)
       
       # Filter values
       newDT <- ogDT
@@ -339,8 +343,7 @@ server <- function(input, output) {
       # From the filtered data select columns based on Visible Minority 2 Widget
       df <- filtered_data2() %>%
         select(input$VM2)
-        
-      
+
       # Transpose the data
       dft <- as.data.frame(t(as.matrix(df)))
       
@@ -373,7 +376,7 @@ server <- function(input, output) {
     # Require the ethnocultural data frame
     req(ec())
   
-    df <- melt(ec(), id.vars = 'Visible Minority Group')
+    df <- melt(data.table(ec()), id.vars = 'Visible Minority Group')
     
     # Plot the column graph
     ggplot(df, aes(x = `Visible Minority Group`, y = value, fill = variable)) +
@@ -390,7 +393,7 @@ server <- function(input, output) {
     # Require the ethnocultural data frame
     req(ec2())
     
-    df <- melt(ec2(), id.vars = 'Visible Minority Group 2')
+    df <- melt(data.table(ec2()), id.vars = 'Visible Minority Group 2')
     
     # Plot the column graph
     ggplot(df, aes(x = `Visible Minority Group 2`, y = value, fill = variable)) +
