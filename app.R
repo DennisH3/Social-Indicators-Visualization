@@ -28,8 +28,6 @@ setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex",
                                  "South Asian 2", "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
                                  "Multiple visible minorities 2", "Not a visible minority 2"))
 
-print(object.size(ogDT))
-
 # Define UI ----
 ui <- fluidPage(
   titlePanel("Ethnocultural Groups Visualizations, 2016"),
