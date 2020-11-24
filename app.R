@@ -10,13 +10,25 @@ library(shiny)
 library(tidyverse)
 library(data.table)
 
-# Read csv files into a dataframe
-df <- read.csv("98-400-X2016274_English_CSV_data.csv")
-df2 <- read.csv("98-400-X2016275_English_CSV_data.csv")
+# Original combined file size was 847.158 MB (274) and 17.062 MB (275)
+# Reduced size = 561.656176 MB
+# Save 302.563824 MB
+# The datatable with the columns of interest (Year, Geography, and the DIM columns)
+ogDT <- select(merge(read.csv("98-400-X2016274_English_CSV_data.csv"), 
+                     read.csv("98-400-X2016275_English_CSV_data.csv"), 
+                     all = TRUE), 
+               c(1, 4, 8, 11, 14, 17:24, 27, 30:38, 41:48))
 
-# Full outer merge of both files
-mergeDF <- merge(df, df2, all = TRUE)
-#print(colnames(mergeDF))
+# Rename the columns
+setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex", "Chinese", "Black", "Filipino", "Latin American",
+                                 "Arab", "Korean", "Japanese", "Immigrant Status", "Field of Study", "Total Visible Minority",
+                                 "Total visible minority population", "South Asian", "Southeast Asian", "West Asian", 
+                                 "Visible minority, n.i.e.", "Multiple visible minorities", "Not a visible minority",
+                                 "Generation Status", "Total Visible Minority 2", "Total visible minority population 2", 
+                                 "South Asian 2", "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
+                                 "Multiple visible minorities 2", "Not a visible minority 2"))
+
+print(object.size(ogDT))
 
 # Define UI ----
 ui <- fluidPage(
@@ -36,7 +48,7 @@ ui <- fluidPage(
                  
                  selectizeInput("geo", 
                                 label = "Geography",
-                                choices = unique(mergeDF$GEO_NAME),
+                                choices = unique(ogDT$Geography),
                                 options = list( placeholder = 'Please select an option below',
                                                 onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -63,7 +75,7 @@ ui <- fluidPage(
                  
                  selectizeInput("deg", 
                                 label = "Degree of Study", 
-                                choices = unique(mergeDF$DIM..Highest.certificate..diploma.or.degree..15.),
+                                choices = unique(ogDT$Education),
                                 options = list(placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -71,7 +83,7 @@ ui <- fluidPage(
                  
                  selectizeInput("fos", 
                                 label = "Field of Study", 
-                                choices = sort(unique(mergeDF$DIM..Major.field.of.study...Classification.of.Instructional.Programs..CIP..2016..43.)),
+                                choices = sort(unique(ogDT$`Field of Study`)),
                                 options = list(placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -119,7 +131,7 @@ ui <- fluidPage(
                  
                  selectizeInput("age", 
                                 label = "Age Group",
-                                choices = unique(mergeDF$DIM..Age..9.),
+                                choices = unique(ogDT$Age),
                                 options = list( placeholder = 'Please select an option below',
                                                 onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -127,7 +139,7 @@ ui <- fluidPage(
                  
                  selectizeInput("sex", 
                                 label = "Sex",
-                                choices = sort(unique(mergeDF$DIM..Sex..3.), decreasing = TRUE),
+                                choices = sort(unique(ogDT$Sex), decreasing = TRUE),
                                 options = list( placeholder = 'Please select an option below',
                                                 onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -135,7 +147,7 @@ ui <- fluidPage(
                  
                  selectizeInput("immStatus", 
                                 label = "Immigration Status",
-                                choices = unique(mergeDF$DIM..Immigrant.status..4.),
+                                choices = unique(ogDT$`Immigrant Status`),
                                 options = list( placeholder = 'Please select an option below',
                                                 onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -143,7 +155,7 @@ ui <- fluidPage(
                  
                  selectizeInput("gen", 
                                 label = "Generation Status",
-                                choices = unique(mergeDF$DIM..Generation.status..4.),
+                                choices = unique(ogDT$`Generation Status`),
                                 options = list( placeholder = 'Please select an option below',
                                                 onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -242,18 +254,6 @@ ui <- fluidPage(
 
 # Define server logic ----
 server <- function(input, output) {
-  
-  # The datatable with the columns of interest (Year, Geography, and the DIM columns)
-  ogDT <- select(mergeDF, c(1, 4, 8, 11, 14, 17:24, 27, 30:38, 41:48))
-  
-  # Rename the columns
-  setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex", "Chinese", "Black", "Filipino", "Latin American",
-                                   "Arab", "Korean", "Japanese", "Immigrant Status", "Field of Study", "Total Visible Minority",
-                                   "Total visible minority population", "South Asian", "Southeast Asian", "West Asian", 
-                                   "Visible minority, n.i.e.", "Multiple visible minorities", "Not a visible minority",
-                                   "Generation Status", "Total Visible Minority 2", "Total visible minority population 2", 
-                                   "South Asian 2", "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
-                                   "Multiple visible minorities 2", "Not a visible minority 2"))
   
   # Reactive values ----------------------------------------------------------
 
