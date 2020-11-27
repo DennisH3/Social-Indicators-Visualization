@@ -36,6 +36,11 @@ setnames(degree, colnames(degree), c("Year", "Geography", "Generation Status", "
                                      "West Asian", "Korean", "Japanese", "Visible minority, n.i.e.", 
                                      "Multiple visible minorities", "Not a visible minority"))
 
+# Change data types for select columns
+employGen$`Generation Status` <- as.character(employGen$`Generation Status`)
+employGen$`Total Visible Minority` <- as.factor(employGen$`Total Visible Minority`)
+employGen$`Number of People` <- as.integer(employGen$`Number of People`)
+
 # Pivot the table
 degree <- pivot_longer(degree, c(7:21), names_to = "Visible Minority", values_to = "Number of People 2")
 
@@ -48,8 +53,14 @@ employGen
 degree
 ```
 ```{r}
+# Join both data tables
 degIncome <- inner_join(degree, employGen)
-degIncome
-write.csv(degIncome, "combined214and275.csv)
+
+# Remove duplicate rows
+degIncome <- degIncome %>%
+                distinct()
+
+# Write file
+write.csv(degIncome, "combined214and275.csv")
 ```
 
