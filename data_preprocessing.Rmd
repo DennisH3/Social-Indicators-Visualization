@@ -24,20 +24,32 @@ setnames(employGen, colnames(employGen), c("Year", "Geography", "Visible Minorit
 # Pivot the table
 employGen <- pivot_longer(employGen, c(7:10), names_to = "Generation Status", values_to = "Number of People")
 
+# Format columns
+employGen <- employGen %>%
+                mutate(`Visible Minority` = gsub("- ", "", toupper(employGen$`Visible Minority`)) %>%
+                mutate(`Generation Status` = toupper(employGen$`Generation Status`)
+
 # Rename columns
 setnames(degree, colnames(degree), c("Year", "Geography", "Generation Status", "Age", "Sex", "Education", 
                                      "Total Visible Minority", "Total visible minority population", "South Asian", 
                                      "Chinese", "Black", "Filipino", "Latin American", "Arab", "Southeast Asian", 
                                      "West Asian", "Korean", "Japanese", "Visible minority, n.i.e.", 
                                      "Multiple visible minorities", "Not a visible minority"))
+
 # Pivot the table
 degree <- pivot_longer(degree, c(7:21), names_to = "Visible Minority", values_to = "Number of People 2")
+
+# Format columns
+degree <- degree %>%
+                mutate(`Generation Status` = gsub("- ", "", toupper(degree$`Generation Status`)) %>%
+                mutate(`Visible Minority` = toupper(degree$`Visible Minority`)
 
 employGen
 degree
 ```
 ```{r}
-degIncome <- full_join(degree, employGen)
+degIncome <- inner_join(degree, employGen)
 degIncome
+write.csv(degIncome, "combined214and275.csv)
 ```
 
