@@ -1,0 +1,43 @@
+---
+title: "Data Preprocessing for Social Indicators"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(data.table)
+```
+
+```{r}
+# Read files and select columns of interest
+employGen <- select(read.csv("98-400-X2016214_English_CSV_data.csv"), c(1, 4, 8, 11, 14, 17, 20:23))
+degree <- select(read.csv("98-400-X2016275_English_CSV_data.csv"), c(1, 4, 8, 11, 14, 17, 20:34))
+```
+
+```{r}
+# Data manipulation
+
+# Rename columns
+setnames(employGen, colnames(employGen), c("Year", "Geography", "Visible Minority", "Age", "Sex", "Total Income Groups", 
+                                           "Total Generation Status", "First Generation", "Second Generation",
+                                           "Third Generation or More"))
+# Pivot the table
+employGen <- pivot_longer(employGen, c(7:10), names_to = "Generation Status", values_to = "Number of People")
+
+# Rename columns
+setnames(degree, colnames(degree), c("Year", "Geography", "Generation Status", "Age", "Sex", "Education", 
+                                     "Total Visible Minority", "Total visible minority population", "South Asian", 
+                                     "Chinese", "Black", "Filipino", "Latin American", "Arab", "Southeast Asian", 
+                                     "West Asian", "Korean", "Japanese", "Visible minority, n.i.e.", 
+                                     "Multiple visible minorities", "Not a visible minority"))
+# Pivot the table
+degree <- pivot_longer(degree, c(7:21), names_to = "Visible Minority", values_to = "Number of People 2")
+
+employGen
+degree
+```
+```{r}
+degIncome <- full_join(degree, employGen)
+degIncome
+```
+
