@@ -2,6 +2,11 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
+# Create a double legend with employment income and VisMin
+# Add a chloropleth
+
+#install.packages("tidyverse")
+
 # Load packages
 library(shiny)
 library(tidyverse)
@@ -11,6 +16,10 @@ library(data.table)
 # Reduced size = 561.656176 MB
 # Save 302.563824 MB
 # The datatable with the columns of interest (Year, Geography, and the DIM columns)
+
+# Should use merge(select(read.csv(file1)), select(read.csv(file2)), all = TRUE) instead. Have to rename columns too before merge.
+# This way, can have only one column for visible minority
+
 ogDT <- select(merge(read.csv("98-400-X2016274_English_CSV_data.csv"), 
                      read.csv("98-400-X2016275_English_CSV_data.csv"), 
                      all = TRUE), 
@@ -24,6 +33,9 @@ setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex",
                                  "Generation Status", "Total Visible Minority 2", "Total visible minority population 2", 
                                  "South Asian 2", "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
                                  "Multiple visible minorities 2", "Not a visible minority 2"))
+
+# Read file for scatter plot
+degInc <- read.csv("combined214and275.csv", check.names = FALSE)
 
 # Define UI ----
 ui <- fluidPage(
@@ -154,100 +166,116 @@ ui <- fluidPage(
                  h1("Graphs"),
                  h4("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
                    Then select from either the Visible Minorities. This will produce 2 column graphs"),
-                 #dataTableOutput("df"),
-                 #dataTableOutput("df2"),
-                 #dataTableOutput("df3"),
-                 #dataTableOutput("df4"),
                  plotOutput("ecplot"),
                  plotOutput("ecplot2")
                )
              )
     ),
+    
+    # Second Tab
+    tabPanel("Similarity and Differences", fluid = TRUE,
+             sidebarLayout(
+               sidebarPanel(
+                 
+                 selectizeInput("yr", 
+                                label = "Year",
+                                choices = list("2016", 
+                                               "2017",
+                                               "2018", 
+                                               "2019"),
+                                selected = "2016"
+                 ),
+                 
+                 selectizeInput("g", 
+                                label = "Geography",
+                                choices = unique(degInc$Geography),
+                                selected = "Canada"
+                                
+                 ),
+                 
+                 h4("Framework Components Participation"),
+                 
+                 # Will change to multi-select selective input with limit 6
+                 checkboxGroupInput("Lm", 
+                                    label = "Labour Market", 
+                                    choices = list("Employment Income" = 1, 
+                                                   "Annual full-time full-year wage" = 2, 
+                                                   "Full-time full year employment" = 3,
+                                                   "Labour force particpation" = 4,
+                                                   "Employment rate" = 5,
+                                                   "Unemployment rate" = 6,
+                                                   "Youth NEET" = 7,
+                                                   "Overqualification" = 8,
+                                                   "Self-employment" = 9,
+                                                   "Precarious employment" = 10)
+                                    
+                 ),
+                 
+                 h4("Indicators"),
+                 
+                 helpText("For the example, only No certificate, diploma or degree is provided"),
+                 
+                 selectizeInput("dos", 
+                                label = "Degree of Study", 
+                                choices = unique(degInc$Education),
+                                selected = "No certificate, diploma or degree"
+                                
+                 ),
+                 
+                 checkboxGroupInput("VisM", 
+                                    label = "Visible Minority",
+                                    choices = unique(degInc$`Visible Minority`),
+                                    selected = "TOTAL VISIBLE MINORITY"
+                 ),
+                 
+                 h4("Sub-populations"),
+                 
+                 selectizeInput("ag", 
+                                label = "Age Group",
+                                choices = unique(degInc$Age),
+                                selected = "Total - Age"
+                 ),
+                 
+                 selectizeInput("Sex", 
+                                label = "Sex",
+                                choices = sort(unique(degInc$Sex), decreasing = TRUE),
+                                selected = "Total - Sex"
+                 ),
+                 
+                 selectizeInput("gen",
+                                label = "Generation Status",
+                                choices = unique(degInc$`Generation Status`),
+                                selected = "TOTAL GENERATION STATUS"
+                 ),
+                 
+                 helpText("For the example, only Median total income ($) is provided"),
+                 
+                 selectizeInput("Income",
+                                label = "Income",
+                                choices = unique(degInc$`Total Income Groups`),
+                                selected = "Median total income ($)"
+                 )
+                 
+              ),
+                 
+             mainPanel(
+               h1("Scatter Plot"),
+               h4("To filter the data, please select Geography, Degree, Generation Status, Age, and Sex first.
+                  Then select from either the Visible Minorities. This will produce a scatter plot"),
+               plotOutput("splot")
+             )
+         )
+    ),
   
-    # Second Tab to check if tables are properly filtering
+    # Third Tab to check if tables are properly filtering
     tabPanel(
       "Debug", fluid = TRUE,
       h1("Filtered Data Tables"),
-      dataTableOutput("ogDT"),
-      dataTableOutput("df"),
-      dataTableOutput("df2"),
-      dataTableOutput("df3"),
-      dataTableOutput("df4")
-    ),
-    
-    # Third Tab (Can ignore for now)
-    tabPanel(
-      "Similarities and Differences", fluid = TRUE,
-      sidebarLayout(
-        sidebarPanel(
-          checkboxGroupInput("fcp", 
-                             label = "Framework Components Participation" , 
-                             choices = list("Labour Market" = 1, 
-                                            "Choice 2" = 2, 
-                                            "Choice 3" = 3),
-                             selected = 1),
-          
-          checkboxGroupInput("dv", 
-                             label = "Dependent Variable" , 
-                             choices = list("Income" = 1, 
-                                            "Choice 2" = 2, 
-                                            "Choice 3" = 3),
-                             selected = 1),
-          
-          checkboxGroupInput("iv", 
-                             label = "Independent Variable" , 
-                             choices = list("Employment" = 1, 
-                                            "Choice 2" = 2, 
-                                            "Choice 3" = 3),
-                             selected = 1),
-          
-          selectInput("year", 
-                      label = "Year",
-                      choices = list("2016", 
-                                     "2017",
-                                     "2018", 
-                                     "2019"),
-                      selected = "2016"),
-          
-          selectInput("sex", 
-                      label = "Sex",
-                      choices = list("Male", 
-                                     "Female"
-                      ),
-                      selected = "Male"),
-          
-          selectInput("immStatus", 
-                      label = "Immigration Status",
-                      choices = list("Immigrated before 1980", 
-                                     "Immigrated before 1990",
-                                     "Immigrated before 2000", 
-                                     "Immigrated before 2010"),
-                      selected = "Immigrated before 1980"),
-          
-          checkboxInput("observed", "Observed", value = FALSE),
-          
-          h4("Adjusted"),
-          
-          selectInput("ag", 
-                      label = "Age Group",
-                      choices = list("18-24", 
-                                     "25-33",
-                                     "34-41", 
-                                     "42-50"),
-                      selected = "18-24"),
-          
-          selectInput("geo", 
-                      label = "Geography",
-                      choices = list("Canada", 
-                                     "United States"
-                      ),
-                      selected = "Canada")
-        ),
-        mainPanel(
-          h1("Graphs to be plotted")
-          # plotOutput("splot")
-        )
-      )
+      dataTableOutput("df"), # filter_data()
+      dataTableOutput("df2"), # data frame for ec()
+      dataTableOutput("df3"), # filter_data2()
+      dataTableOutput("df4"), # data frame for ec2()
+      dataTableOutput("DI") # data frame for degIncome
     )
   )
 )
@@ -361,6 +389,26 @@ server <- function(input, output) {
     }
   )
   
+  # This reactive will filter degInc
+  filtered_degInc <- reactive(
+    {
+      # Require Geography, sex, gen, and VisM inputs
+      req(input$g, input$Sex, input$gen, input$VisM)
+      
+      # Note that degree and Income are static
+      
+      # Filter values
+      newDT <- degInc
+      
+      newDT <- filter(newDT, Geography == input$g)
+      #newDT <- filter(newDT, Age == input$ag)
+      newDT <- filter(newDT, Sex == input$Sex)
+      newDT <- filter(newDT, `Generation Status` == input$gen)
+      newDT <- filter(newDT, `Visible Minority` == input$VisM)
+      
+      return(newDT)
+    }
+  )
   
   # Output ---------------------------------------------------
   output$df <- renderDataTable({filtered_data()})
@@ -370,6 +418,8 @@ server <- function(input, output) {
   output$df3 <- renderDataTable({filtered_data2()})
   
   output$df4 <- renderDataTable({ec2()})
+  
+  output$DI <- renderDataTable({filtered_degInc()})
   
   output$ecplot <- renderPlot({
     
@@ -402,6 +452,20 @@ server <- function(input, output) {
            x = "Visible Minority Group 2",
            y = "Number of People",
            fill = "Generation Status")
+    
+  })
+  
+  output$splot <- renderPlot({
+    
+    # Require filtered_degInc data frame
+    req(filtered_degInc)
+    
+    # Plot the scatter plot
+    ggplot(filtered_degInc(), aes(x = `Number of People 2`, y = `Number of People`)) +
+      geom_point(aes(color = `Visible Minority`)) +
+      labs(title = "Generation vs Employment Income",
+           x = "Generation status with No certificate, diploma, or degree",
+           y = "Number of People with Median Total income ($)")
     
   })
 }
