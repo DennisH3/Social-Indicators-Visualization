@@ -5,12 +5,15 @@
 # Create a double legend with employment income and VisMin
 # Add a chloropleth
 
+# Install packages
 #install.packages("tidyverse")
+#install.packages("plotly")
 
 # Load packages
 library(shiny)
 library(tidyverse)
 library(data.table)
+library(plotly)
 
 # Original combined file size was 847.158 MB (274) and 17.062 MB (275)
 # Reduced size = 561.656176 MB
@@ -166,8 +169,8 @@ ui <- fluidPage(
                  h1("Graphs"),
                  h4("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
                    Then select from either the Visible Minorities. This will produce 2 column graphs"),
-                 plotOutput("ecplot"),
-                 plotOutput("ecplot2")
+                 plotlyOutput("ecplot"),
+                 plotlyOutput("ecplot2")
                )
              )
     ),
@@ -262,7 +265,7 @@ ui <- fluidPage(
                h1("Scatter Plot"),
                h4("To filter the data, please select Geography, Degree, Generation Status, Age, and Sex first.
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
-               plotOutput("splot")
+               plotlyOutput("splot")
              )
          )
     ),
@@ -404,7 +407,7 @@ server <- function(input, output) {
       #newDT <- filter(newDT, Age == input$ag)
       newDT <- filter(newDT, Sex == input$Sex)
       newDT <- filter(newDT, `Generation Status` == input$gen)
-      newDT <- filter(newDT, `Visible Minority` == input$VisM)
+      newDT <- newDT %>% filter(`Visible Minority` %in% input$VisM)
       
       return(newDT)
     }
@@ -421,7 +424,7 @@ server <- function(input, output) {
   
   output$DI <- renderDataTable({filtered_degInc()})
   
-  output$ecplot <- renderPlot({
+  output$ecplot <- renderPlotly({
     
     # Require the ethnocultural data frame
     req(ec())
@@ -429,16 +432,18 @@ server <- function(input, output) {
     df <- melt(data.table(ec()), id.vars = 'Visible Minority Group')
     
     # Plot the column graph
-    ggplot(df, aes(x = `Visible Minority Group`, y = value, fill = variable)) +
+    ecp <- ggplot(df, aes(x = `Visible Minority Group`, y = value, fill = variable)) +
      geom_col(position = "dodge") + 
      labs(title = "Ethnocultural Indicator",
           x = "Visible Minority Group",
           y = "Number of People",
           fill = "Immigrant Status")
     
+    ggplotly(ecp)
+    
    })
   
-  output$ecplot2 <- renderPlot({
+  output$ecplot2 <- renderPlotly({
     
     # Require the ethnocultural data frame
     req(ec2())
@@ -446,26 +451,34 @@ server <- function(input, output) {
     df <- melt(data.table(ec2()), id.vars = 'Visible Minority Group 2')
     
     # Plot the column graph
-    ggplot(df, aes(x = `Visible Minority Group 2`, y = value, fill = variable)) +
+    ecp2 <- ggplot(df, aes(x = `Visible Minority Group 2`, y = value, fill = variable)) +
       geom_col(position = "dodge") + 
       labs(title = "Ethnocultural Indicator",
            x = "Visible Minority Group 2",
            y = "Number of People",
            fill = "Generation Status")
     
+    ggplotly(ecp2)
+    
   })
   
-  output$splot <- renderPlot({
+  output$splot <- renderPlotly({
     
     # Require filtered_degInc data frame
     req(filtered_degInc)
     
+    filtered_degInc() %>%
+      group_by(`Visible Minority`) %>%
+      mutate(Percentage = `Number of People`/sum(`Number of People`) * 100)
+    
     # Plot the scatter plot
-    ggplot(filtered_degInc(), aes(x = `Number of People 2`, y = `Number of People`)) +
+    sp <- ggplot(filtered_degInc(), aes(x = `Number of People 2`, y = `Number of People`)) +
       geom_point(aes(color = `Visible Minority`)) +
       labs(title = "Generation vs Employment Income",
            x = "Generation status with No certificate, diploma, or degree",
            y = "Number of People with Median Total income ($)")
+    
+    ggplotly(sp)
     
   })
 }
