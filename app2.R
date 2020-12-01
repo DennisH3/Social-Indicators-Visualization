@@ -2,8 +2,15 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
-# Create a double legend with employment income and VisMin
-# Add a chloropleth
+# Notes on next steps:
+# Make framework a drop down list
+# Change Immigrant Status to Sex
+# Reorder Indicators. Also, add header to separate filters
+# Move scatter plot data table back into debug
+# Add trend line
+# Enlarge the scatter plot size
+# Test synthetic data
+# Add a chloropleth (will use voter turn out data, get GeoJSON file)
 
 # Install packages
 #install.packages("tidyverse")
@@ -21,7 +28,7 @@ library(plotly)
 # The datatable with the columns of interest (Year, Geography, and the DIM columns)
 
 # Should use merge(select(read.csv(file1)), select(read.csv(file2)), all = TRUE) instead. Have to rename columns too before merge.
-# This way, can have only one column for visible minority
+# This way, will have only one column for visible minority
 
 ogDT <- select(merge(read.csv("98-400-X2016274_English_CSV_data.csv"), 
                      read.csv("98-400-X2016275_English_CSV_data.csv"), 
@@ -39,6 +46,12 @@ setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex",
 
 # Read file for scatter plot
 degInc <- read.csv("combined214and275.csv", check.names = FALSE)
+
+# Calculate percentages by VisMin
+degInc <- degInc %>%
+            dplyr::group_by(`Visible Minority`) %>%
+            dplyr::mutate(`Percentage by Generation` = `Number of People 2`/sum(`Number of People 2`) * 100) %>%
+            dplyr::mutate(`Percentage by Total Income` = `Number of People`/sum(`Number of People`) * 100)
 
 # Define UI ----
 ui <- fluidPage(
@@ -265,7 +278,8 @@ ui <- fluidPage(
                h1("Scatter Plot"),
                h4("To filter the data, please select Geography, Degree, Generation Status, Age, and Sex first.
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
-               plotlyOutput("splot")
+               plotlyOutput("splot"),
+               dataTableOutput("DI") # data frame for degIncome
              )
          )
     ),
@@ -277,8 +291,7 @@ ui <- fluidPage(
       dataTableOutput("df"), # filter_data()
       dataTableOutput("df2"), # data frame for ec()
       dataTableOutput("df3"), # filter_data2()
-      dataTableOutput("df4"), # data frame for ec2()
-      dataTableOutput("DI") # data frame for degIncome
+      dataTableOutput("df4") # data frame for ec2()
     )
   )
 )
@@ -467,18 +480,33 @@ server <- function(input, output) {
     # Require filtered_degInc data frame
     req(filtered_degInc)
     
-    filtered_degInc() %>%
-      group_by(`Visible Minority`) %>%
-      mutate(Percentage = `Number of People`/sum(`Number of People`) * 100)
+    dataPoint <- input$DI_rows_selected
     
     # Plot the scatter plot
-    sp <- ggplot(filtered_degInc(), aes(x = `Number of People 2`, y = `Number of People`)) +
+    sp <- ggplot(filtered_degInc(), aes(x = `Percentage by Generation`, y = `Percentage by Total Income`)) +
       geom_point(aes(color = `Visible Minority`)) +
       labs(title = "Generation vs Employment Income",
-           x = "Generation status with No certificate, diploma, or degree",
-           y = "Number of People with Median Total income ($)")
+           x = "Generation status with No certificate, diploma, or degree (%)",
+           y = "Number of People with \"Median Total income ($)\" (%)")
     
     ggplotly(sp)
+    
+    # fig <- plot_ly(data = filtered_degInc, x = ~`Percentage by Generation`, 
+    #                y = ~`Percentage by Total Income`, type = 'scatter',
+    #                text = ~paste('Visible Minority: ', `Visible Minority`,
+    #                              '<br>Age: ', Age,
+    #                              '<br>Sex: ', Sex,
+    #                              '<br>Level of Degree:', Education,
+    #                              '<br>Number of People by Generation: ', `Number of People 2`, 
+    #                              '<br>Number of People by Total Income:', `Number of People`),
+    #                color = ~`Visible Minority`)
+    # 
+    # fig <- fig %>% 
+    #   layout(title = "Generation vs Employment Income",
+    #          xaxis = list(title = "Generation status with No certificate, diploma, or degree (%)"),
+    #          yaxis = list(title = "Number of People with \"Median Total income ($)\" (%)"))
+    # 
+    # fig
     
   })
 }
