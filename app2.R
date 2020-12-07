@@ -51,6 +51,9 @@ degInc <- degInc %>%
             dplyr::mutate(`Percentage by Generation` = `Number of People 2`/sum(`Number of People 2`) * 100) %>%
             dplyr::mutate(`Percentage by Total Income` = `Number of People`/sum(`Number of People`) * 100)
 
+# Set color ramp 
+my_colors <- colorRampPalette(brewer.pal(8, 'Dark2'))(15)
+
 # Define UI ----
 ui <- fluidPage(
   titlePanel("Ethnocultural Groups Visualizations, 2016"),
@@ -58,6 +61,8 @@ ui <- fluidPage(
     tabPanel("Intersectionality Analyses", fluid = TRUE,
              sidebarLayout(
                sidebarPanel(
+                 
+                 helpText("Changing this does nothing"),
                  
                  selectizeInput("year", 
                                 label = "Year",
@@ -75,6 +80,8 @@ ui <- fluidPage(
                  ),
                  
                  h4("Framework Components Participation"),
+                 
+                 helpText("Changing this does nothing"),
                  
                  # Will change to multi-select selective input with limit 6
                  selectizeInput("LM", 
@@ -109,14 +116,14 @@ ui <- fluidPage(
                                 selected = "Total - Major field of study - Classification of Instructional Programs (CIP) 2016"
                  ),
                  
-                 selectizeInput("immStatus",
-                                label = "Immigrant Status",
-                                choices = unique(ogDT$`Immigrant Status`),
-                                selected = "Total - Immigrant Status"
-                 ),
+                 # selectizeInput("immStatus",
+                 #                label = "Immigrant Status",
+                 #                choices = unique(ogDT$`Immigrant Status`),
+                 #                selected = "Total - Immigrant Status"
+                 # ),
                  
                  checkboxGroupInput("VM", 
-                                    label = "Visible Minority",
+                                    label = "Visible Minority for Immigrant Status",
                                     choices = list("Total Visible Minority",
                                                    "Total visible minority population",
                                                    "South Asian",
@@ -136,7 +143,7 @@ ui <- fluidPage(
                  ),
                  
                  checkboxGroupInput("VM2", 
-                                    label = "Visible Minority 2",
+                                    label = "Visible Minority for Generation Status",
                                     choices = list("Total Visible Minority 2",
                                                    "Total visible minority population 2",
                                                    "South Asian 2",
@@ -183,7 +190,10 @@ ui <- fluidPage(
                  h1("Graphs"),
                  h4("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
                    Then select from either the Visible Minorities. This will produce 2 column graphs"),
+                 plotlyOutput("sBar", inline = TRUE),
+                 br(),
                  plotlyOutput("ecplot"),
+                 br(),
                  plotlyOutput("ecplot2")
                )
              )
@@ -193,6 +203,8 @@ ui <- fluidPage(
     tabPanel("Similarity and Differences", fluid = TRUE,
              sidebarLayout(
                sidebarPanel(
+                 
+                 helpText("Changing this does nothing"),
                  
                  selectizeInput("yr", 
                                 label = "Year",
@@ -211,6 +223,8 @@ ui <- fluidPage(
                  ),
                  
                  h4("Framework Components Participation"),
+                 
+                 helpText("Changing this does nothing"),
                  
                  # Will change to multi-select selective input with limit 6
                  selectizeInput("Lm", 
@@ -282,7 +296,9 @@ ui <- fluidPage(
                h1("Scatter Plot"),
                h4("To filter the data, please select Geography, Degree, Generation Status, Age, and Sex first.
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
-               plotlyOutput("splot")
+               plotlyOutput("splot", inline = TRUE),
+               br(),
+               p("Note: the regression lines overlap.")
              )
          )
     ),
@@ -295,7 +311,8 @@ ui <- fluidPage(
       dataTableOutput("df2"), # data frame for ec()
       dataTableOutput("df3"), # filter_data2()
       dataTableOutput("df4"), # data frame for ec2()
-      dataTableOutput("DI") # data frame for degIncome
+      dataTableOutput("DI"), # data frame for degIncome
+      dataTableOutput("sDF")
     )
   )
 )
@@ -305,16 +322,11 @@ server <- function(input, output) {
   
   # Reactive values ----------------------------------------------------------
 
-  # This reactive will filter ogDT by inputs for Immigrant Status
+  # This reactive will filter ogDT by inputs for Sex
   filtered_data <- reactive(
     {
-      # if no input, display ogDT
-      if (input$year == "2016" & input$geo == "") {
-        return(ogDT)
-      } else {
-      
-      # Require degree, field of study, age, and sex inputs
-      req(input$deg, input$fos, input$age, input$sex)
+      # Require geography, degree, field of study, age, and sex inputs
+      req(input$geo, input$deg, input$fos, input$age, input$sex)
       
       # Filter values
       newDT <- ogDT
@@ -324,14 +336,11 @@ server <- function(input, output) {
       newDT <- filter(newDT, `Field of Study` == input$fos)
       newDT <- filter(newDT, Age == input$age)
       newDT <- filter(newDT, Sex == input$sex)
-      # Use this attribute for 2nd graph
-      #ogDT$`Generation Status` == input$gen
       
       # Remove rows where column 13 (Immigrant Status is NA)
       newDT <- newDT[complete.cases(newDT[ , 13]),]
       
       return(newDT)
-    }
   })
   
   # Select Ethnocultural groups for the first bar plot
@@ -430,6 +439,31 @@ server <- function(input, output) {
     }
   )
   
+  filtered_sex <- reactive({
+    # Require geography, degree, field of study, and age inputs
+    req(input$geo, input$deg, input$fos, input$age)
+    
+    # Filter values
+    newDT <- ogDT
+    
+    newDT <- filter(newDT, Geography == input$geo)
+    newDT <- filter(newDT, Education == input$deg)
+    newDT <- filter(newDT, `Field of Study` == input$fos)
+    newDT <- filter(newDT, Age == input$age)
+    #newDT <- filter(newDT, `Visible Minority` %in% input$VisM)
+    
+    # Remove rows where column 13 (Immigrant Status is NA)
+    newDT <- newDT[complete.cases(newDT[ , 13]),]
+    
+    # Transform the data frame
+    newDT <- newDT %>%
+      select(c(1:22)) %>%
+      pivot_longer(c(6:12, 15:22), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
+      pivot_wider(names_from = Sex, values_from = "Number of People", values_fn = sum)
+    
+    return(newDT)
+  })
+  
   # Output ---------------------------------------------------
   output$df <- renderDataTable({filtered_data()})
   
@@ -441,6 +475,21 @@ server <- function(input, output) {
   
   output$DI <- renderDataTable({filtered_degInc()})
   
+  output$sDF <- renderDataTable({filtered_sex()})
+  
+  output$sBar <- renderPlotly({
+    req(filtered_sex())
+    
+    fig <- plot_ly(filtered_sex(), x = ~`Visible Minority Groups`, y = ~Female, type = 'bar', name = "Female",
+                   width = 1000, height = 600) %>%
+      add_trace(y = ~Male, name = "Male") %>%
+      add_trace(y = ~`Total - Sex`, name = "Total - Sex") %>%
+      layout(title = "Population of Visible Minority Groups by Education and Field of Study, 2016", 
+             yaxis = list(title = 'Number of People'), barmode = 'group')
+    
+    fig
+  })
+  
   output$ecplot <- renderPlotly({
     
     # Require the ethnocultural data frame
@@ -451,7 +500,8 @@ server <- function(input, output) {
     # Plot the column graph
     ecp <- ggplot(df, aes(x = `Visible Minority Group`, y = value, fill = variable)) +
      geom_col(position = "dodge") + 
-     labs(title = "Ethnocultural Indicator",
+      scale_y_continuous(labels = scales::number) +
+     labs(title = "Immigrant Status Indicator",
           x = "Visible Minority Group",
           y = "Number of People",
           fill = "Immigrant Status")
@@ -470,7 +520,8 @@ server <- function(input, output) {
     # Plot the column graph
     ecp2 <- ggplot(df, aes(x = `Visible Minority Group 2`, y = value, fill = variable)) +
       geom_col(position = "dodge") + 
-      labs(title = "Ethnocultural Indicator",
+      scale_y_continuous(labels = scales::number) +
+      labs(title = "Generation Status Indicator",
            x = "Visible Minority Group 2",
            y = "Number of People",
            fill = "Generation Status")
@@ -489,15 +540,16 @@ server <- function(input, output) {
     
     # Plot the scatter plot
     sp <- plot_ly(data = filtered_degInc(), x = ~`Percentage by Generation`,
-                   y = ~`Percentage by Total Income`, type = 'scatter', mode = 'markers',
-                   text = ~paste('Age: ', Age,
+                  y = ~`Percentage by Total Income`, type = 'scatter', mode = 'markers',
+                  text = ~paste('Age: ', Age,
                                  '<br>Sex: ', Sex,
                                  '<br>Level of Degree:', Education,
                                  '<br>Number of People by Generation: ', `Number of People 2`,
                                  '<br>Number of People by Total Income:', `Number of People`),
-                   color = ~`Visible Minority`,
-                   width = 1000,
-                   height = 600) %>%
+                  color = ~`Visible Minority`,
+                  colors = my_colors,
+                  width = 1000,
+                  height = 600) %>%
       add_trace(x = ~`Percentage by Generation`, y = fit, mode = "lines") # Regression lines are overlapping
 
     sp <- sp %>%
