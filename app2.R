@@ -3,14 +3,11 @@
 # Date: 11/02/2020
 
 # Notes on next steps:
-# Make framework a drop down list
 # Change Immigrant Status to Sex
-# Reorder Indicators. Also, add header to separate filters
-# Move scatter plot data table back into debug
-# Add trend line
-# Enlarge the scatter plot size
+
+# Later stages:
 # Test synthetic data
-# Add a chloropleth (will use voter turn out data, get GeoJSON file)
+# Add a choropleth (will use voter turn out data, get GeoJSON file)
 
 # Install packages
 #install.packages("tidyverse")
@@ -21,6 +18,7 @@ library(shiny)
 library(tidyverse)
 library(data.table)
 library(plotly)
+library(RColorBrewer)
 
 # Original combined file size was 847.158 MB (274) and 17.062 MB (275)
 # Reduced size = 561.656176 MB
@@ -79,18 +77,21 @@ ui <- fluidPage(
                  h4("Framework Components Participation"),
                  
                  # Will change to multi-select selective input with limit 6
-                 checkboxGroupInput("LM", 
-                                    label = "Labour Market", 
-                                    choices = list("Employment Income" = 1, 
-                                                   "Annual full-time full-year wage" = 2, 
-                                                   "Full-time full year employment" = 3,
-                                                   "Labour force particpation" = 4,
-                                                   "Employment rate" = 5,
-                                                   "Unemployment rate" = 6,
-                                                   "Youth NEET" = 7,
-                                                   "Overqualification" = 8,
-                                                   "Self-employment" = 9,
-                                                   "Precarious employment" = 10)
+                 selectizeInput("LM", 
+                                label = "Labour Market", 
+                                choices = list("Employment Income" = 1, 
+                                               "Annual full-time full-year wage" = 2, 
+                                               "Full-time full year employment" = 3,
+                                               "Labour force particpation" = 4,
+                                               "Employment rate" = 5,
+                                               "Unemployment rate" = 6,
+                                               "Youth NEET" = 7,
+                                               "Overqualification" = 8,
+                                               "Self-employment" = 9,
+                                               "Precarious employment" = 10),
+                                options = list(placeholder = 'Please select an option below',
+                                               onInitialize = I('function() { this.setValue(""); }')
+                                )
                  ),
                  
                  h4("Indicators"),
@@ -106,6 +107,12 @@ ui <- fluidPage(
                                 label = "Field of Study", 
                                 choices = sort(unique(ogDT$`Field of Study`)),
                                 selected = "Total - Major field of study - Classification of Instructional Programs (CIP) 2016"
+                 ),
+                 
+                 selectizeInput("immStatus",
+                                label = "Immigrant Status",
+                                choices = unique(ogDT$`Immigrant Status`),
+                                selected = "Total - Immigrant Status"
                  ),
                  
                  checkboxGroupInput("VM", 
@@ -161,13 +168,7 @@ ui <- fluidPage(
                                 choices = sort(unique(ogDT$Sex), decreasing = TRUE),
                                 selected = "Total - Sex"
                  )
-                 # selectizeInput("immStatus", 
-                 #                label = "Immigrant Status",
-                 #                choices = unique(ogDT$`Immigrant Status`),
-                 #                options = list( placeholder = 'Please select an option below',
-                 #                                onInitialize = I('function() { this.setValue(""); }')
-                 #                )
-                 # ),
+
                  # 
                  # selectizeInput("gen", 
                  #                label = "Generation Status",
@@ -175,7 +176,7 @@ ui <- fluidPage(
                  #                options = list( placeholder = 'Please select an option below',
                  #                                onInitialize = I('function() { this.setValue(""); }')
                  #                )
-                 # )
+                 #)
                ),
                
                mainPanel(
@@ -212,18 +213,21 @@ ui <- fluidPage(
                  h4("Framework Components Participation"),
                  
                  # Will change to multi-select selective input with limit 6
-                 checkboxGroupInput("Lm", 
-                                    label = "Labour Market", 
-                                    choices = list("Employment Income" = 1, 
-                                                   "Annual full-time full-year wage" = 2, 
-                                                   "Full-time full year employment" = 3,
-                                                   "Labour force particpation" = 4,
-                                                   "Employment rate" = 5,
-                                                   "Unemployment rate" = 6,
-                                                   "Youth NEET" = 7,
-                                                   "Overqualification" = 8,
-                                                   "Self-employment" = 9,
-                                                   "Precarious employment" = 10)
+                 selectizeInput("Lm", 
+                                  label = "Labour Market", 
+                                  choices = list("Employment Income" = 1, 
+                                                 "Annual full-time full-year wage" = 2, 
+                                                 "Full-time full year employment" = 3,
+                                                 "Labour force particpation" = 4,
+                                                 "Employment rate" = 5,
+                                                 "Unemployment rate" = 6,
+                                                 "Youth NEET" = 7,
+                                                 "Overqualification" = 8,
+                                                 "Self-employment" = 9,
+                                                 "Precarious employment" = 10),
+                                options = list(placeholder = 'Please select an option below',
+                                               onInitialize = I('function() { this.setValue(""); }')
+                                )
                                     
                  ),
                  
@@ -236,6 +240,12 @@ ui <- fluidPage(
                                 choices = unique(degInc$Education),
                                 selected = "No certificate, diploma or degree"
                                 
+                 ),
+                 
+                 selectizeInput("gen",
+                                label = "Generation Status",
+                                choices = unique(degInc$`Generation Status`),
+                                selected = "TOTAL GENERATION STATUS"
                  ),
                  
                  checkboxGroupInput("VisM", 
@@ -258,12 +268,6 @@ ui <- fluidPage(
                                 selected = "Total - Sex"
                  ),
                  
-                 selectizeInput("gen",
-                                label = "Generation Status",
-                                choices = unique(degInc$`Generation Status`),
-                                selected = "TOTAL GENERATION STATUS"
-                 ),
-                 
                  helpText("For the example, only Median total income ($) is provided"),
                  
                  selectizeInput("Income",
@@ -278,8 +282,7 @@ ui <- fluidPage(
                h1("Scatter Plot"),
                h4("To filter the data, please select Geography, Degree, Generation Status, Age, and Sex first.
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
-               plotlyOutput("splot"),
-               dataTableOutput("DI") # data frame for degIncome
+               plotlyOutput("splot")
              )
          )
     ),
@@ -291,7 +294,8 @@ ui <- fluidPage(
       dataTableOutput("df"), # filter_data()
       dataTableOutput("df2"), # data frame for ec()
       dataTableOutput("df3"), # filter_data2()
-      dataTableOutput("df4") # data frame for ec2()
+      dataTableOutput("df4"), # data frame for ec2()
+      dataTableOutput("DI") # data frame for degIncome
     )
   )
 )
@@ -478,35 +482,31 @@ server <- function(input, output) {
   output$splot <- renderPlotly({
     
     # Require filtered_degInc data frame
-    req(filtered_degInc)
+    req(filtered_degInc())
     
-    dataPoint <- input$DI_rows_selected
+    fit <- lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = filtered_degInc()) %>%
+          fitted.values()
     
     # Plot the scatter plot
-    sp <- ggplot(filtered_degInc(), aes(x = `Percentage by Generation`, y = `Percentage by Total Income`)) +
-      geom_point(aes(color = `Visible Minority`)) +
-      labs(title = "Generation vs Employment Income",
-           x = "Generation status with No certificate, diploma, or degree (%)",
-           y = "Number of People with \"Median Total income ($)\" (%)")
-    
-    ggplotly(sp)
-    
-    # fig <- plot_ly(data = filtered_degInc, x = ~`Percentage by Generation`, 
-    #                y = ~`Percentage by Total Income`, type = 'scatter',
-    #                text = ~paste('Visible Minority: ', `Visible Minority`,
-    #                              '<br>Age: ', Age,
-    #                              '<br>Sex: ', Sex,
-    #                              '<br>Level of Degree:', Education,
-    #                              '<br>Number of People by Generation: ', `Number of People 2`, 
-    #                              '<br>Number of People by Total Income:', `Number of People`),
-    #                color = ~`Visible Minority`)
-    # 
-    # fig <- fig %>% 
-    #   layout(title = "Generation vs Employment Income",
-    #          xaxis = list(title = "Generation status with No certificate, diploma, or degree (%)"),
-    #          yaxis = list(title = "Number of People with \"Median Total income ($)\" (%)"))
-    # 
-    # fig
+    sp <- plot_ly(data = filtered_degInc(), x = ~`Percentage by Generation`,
+                   y = ~`Percentage by Total Income`, type = 'scatter', mode = 'markers',
+                   text = ~paste('Age: ', Age,
+                                 '<br>Sex: ', Sex,
+                                 '<br>Level of Degree:', Education,
+                                 '<br>Number of People by Generation: ', `Number of People 2`,
+                                 '<br>Number of People by Total Income:', `Number of People`),
+                   color = ~`Visible Minority`,
+                   width = 1000,
+                   height = 600) %>%
+      add_trace(x = ~`Percentage by Generation`, y = fit, mode = "lines") # Regression lines are overlapping
+
+    sp <- sp %>%
+      layout(title = "Generation vs Employment Income",
+             xaxis = list(title = "Generation status with No certificate, diploma, or degree (%)"),
+             yaxis = list(title = "Number of People with \"Median Total income ($)\" (%)")
+             )
+
+    sp
     
   })
 }
