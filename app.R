@@ -437,16 +437,16 @@ server <- function(input, output) {
   
   filtered_sex <- reactive({
     # Require geography, degree, field of study, and age inputs
-    req(input$geo, input$deg, input$fos, input$age)
+    req(input$geo, input$deg, input$fos, input$age, input$VM)
     
-    # Filter values
+    # Copy ogDT
     newDT <- ogDT
     
+    # Filter values
     newDT <- filter(newDT, Geography == input$geo)
     newDT <- filter(newDT, Education == input$deg)
     newDT <- filter(newDT, `Field of Study` == input$fos)
     newDT <- filter(newDT, Age == input$age)
-    #newDT <- filter(newDT, `Visible Minority` %in% input$VisM)
     
     # Remove rows where column 13 (Immigrant Status is NA)
     newDT <- newDT[complete.cases(newDT[ , 13]),]
@@ -455,7 +455,8 @@ server <- function(input, output) {
     newDT <- newDT %>%
       select(c(1:22)) %>%
       pivot_longer(c(6:12, 15:22), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
-      pivot_wider(names_from = Sex, values_from = "Number of People", values_fn = sum)
+      pivot_wider(names_from = Sex, values_from = "Number of People", values_fn = sum) %>%
+      filter(`Visible Minority Groups` %in% input$VM)
     
     return(newDT)
   })
