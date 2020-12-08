@@ -2,15 +2,11 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
-# Notes on next steps:
-# Change Immigrant Status to Sex
-
-# Later stages:
+# Next Steps:
 # Test synthetic data
 # Add a choropleth (will use voter turn out data, get GeoJSON file)
 
 # Install packages
-#install.packages("tidyverse")
 #install.packages("plotly")
 
 # Load packages
@@ -190,9 +186,9 @@ ui <- fluidPage(
                  h1("Graphs"),
                  h4("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
                    Then select from either the Visible Minorities. This will produce 2 column graphs"),
-                 plotlyOutput("sBar", inline = TRUE),
+                 plotlyOutput("sBar", inline = TRUE, width = 1000, height = 600),
                  br(),
-                 plotlyOutput("ecplot"),
+                 plotlyOutput("ecplot", inline = TRUE),
                  br(),
                  plotlyOutput("ecplot2")
                )
