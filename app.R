@@ -38,14 +38,16 @@ setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex",
                                  "South Asian 2", "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
                                  "Multiple visible minorities 2", "Not a visible minority 2"))
 
-# Read file for scatter plot
-degInc <- read.csv("combined214and275.csv", check.names = FALSE)
+synData <- read.csv("Synthethic data -income and ethnocultural vars.csv", check.names = FALSE)
+
+# Read file for scatter plot (Generation and Income)
+#degInc <- read.csv("combined214and275.csv", check.names = FALSE)
 
 # Calculate percentages by VisMin
-degInc <- degInc %>%
-            dplyr::group_by(`Visible Minority`) %>%
-            dplyr::mutate(`Percentage by Generation` = `Number of People 2`/sum(`Number of People 2`) * 100) %>%
-            dplyr::mutate(`Percentage by Total Income` = `Number of People`/sum(`Number of People`) * 100)
+#degInc <- degInc %>%
+#            dplyr::group_by(`Visible Minority`) %>%
+#            dplyr::mutate(`Percentage by Generation` = `Number of People 2`/sum(`Number of People 2`) * 100) %>%
+#            dplyr::mutate(`Percentage by Total Income` = `Number of People`/sum(`Number of People`) * 100)
 
 # Set color ramp 
 my_colors <- colorRampPalette(brewer.pal(8, 'Dark2'))(15)
@@ -185,8 +187,8 @@ ui <- fluidPage(
                mainPanel(
                  h1("Graphs"),
                  h4("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
-                   Then select from either the Visible Minorities. This will produce 2 column graphs"),
-                 plotlyOutput("sBar", inline = TRUE, width = 1000, height = 600),
+                   Then select from either the Visible Minorities. This will produce 3 column graphs"),
+                 plotlyOutput("sBar", inline = TRUE, width = 1000, height = 400),
                  br(),
                  plotlyOutput("ecplot", inline = TRUE),
                  br(),
@@ -211,12 +213,12 @@ ui <- fluidPage(
                                 selected = "2016"
                  ),
                  
-                 selectizeInput("g", 
-                                label = "Geography",
-                                choices = unique(degInc$Geography),
-                                selected = "Canada"
-                                
-                 ),
+                 # selectizeInput("g", 
+                 #                label = "Geography",
+                 #                choices = unique(degInc$Geography),
+                 #                selected = "Canada"
+                 #                
+                 # ),
                  
                  h4("Framework Components Participation"),
                  
@@ -243,56 +245,56 @@ ui <- fluidPage(
                  
                  h4("Indicators"),
                  
-                 helpText("For the example, only No certificate, diploma or degree is provided"),
+                 # helpText("For the example, only No certificate, diploma or degree is provided"),
+                 # 
+                 # selectizeInput("dos", 
+                 #                label = "Degree of Study", 
+                 #                choices = unique(degInc$Education),
+                 #                selected = "No certificate, diploma or degree"
+                 #                
+                 # ),
                  
-                 selectizeInput("dos", 
-                                label = "Degree of Study", 
-                                choices = unique(degInc$Education),
-                                selected = "No certificate, diploma or degree"
-                                
-                 ),
-                 
-                 selectizeInput("gen",
+                 checkboxGroupInput("gen",
                                 label = "Generation Status",
-                                choices = unique(degInc$`Generation Status`),
-                                selected = "TOTAL GENERATION STATUS"
+                                choices = sort(unique(synData$`Generation Status`)),
+                                selected = "First generation"
                  ),
                  
                  checkboxGroupInput("VisM", 
                                     label = "Visible Minority",
-                                    choices = unique(degInc$`Visible Minority`),
-                                    selected = "TOTAL VISIBLE MINORITY"
+                                    choices = unique(synData$`Visible Minority`),
+                                    selected = "South Asian"
                  ),
                  
                  h4("Sub-populations"),
                  
-                 selectizeInput("ag", 
+                 checkboxGroupInput("ag", 
                                 label = "Age Group",
-                                choices = unique(degInc$Age),
-                                selected = "Total - Age"
+                                choices = unique(synData$`Age groups`),
+                                selected = "15-29"
                  ),
                  
-                 selectizeInput("Sex", 
+                 checkboxGroupInput("Sex", 
                                 label = "Sex",
-                                choices = sort(unique(degInc$Sex), decreasing = TRUE),
-                                selected = "Total - Sex"
-                 ),
-                 
-                 helpText("For the example, only Median total income ($) is provided"),
-                 
-                 selectizeInput("Income",
-                                label = "Income",
-                                choices = unique(degInc$`Total Income Groups`),
-                                selected = "Median total income ($)"
+                                choices = sort(unique(synData$Sex), decreasing = TRUE),
+                                selected = "Female"
                  )
+                 
+                 # helpText("For the example, only Median total income ($) is provided"),
+                 # 
+                 # selectizeInput("Income",
+                 #                label = "Income",
+                 #                choices = unique(degInc$`Total Income Groups`),
+                 #                selected = "Median total income ($)"
+                 # )
                  
               ),
                  
              mainPanel(
                h1("Scatter Plot"),
-               h4("To filter the data, please select Geography, Degree, Generation Status, Age, and Sex first.
+               h4("To filter the data, please select Generation Status, Age, and Sex first.
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
-               plotlyOutput("splot", inline = TRUE),
+               plotlyOutput("splot", inline = TRUE, width = 1000, height = 600),
                br(),
                p("Note: the regression lines overlap.")
              )
@@ -307,8 +309,9 @@ ui <- fluidPage(
       dataTableOutput("df2"), # data frame for ec()
       dataTableOutput("df3"), # filter_data2()
       dataTableOutput("df4"), # data frame for ec2()
-      dataTableOutput("DI"), # data frame for degIncome
-      dataTableOutput("sDF")
+      #dataTableOutput("DI"), # data frame for degIncome
+      dataTableOutput("EmI"),
+      dataTableOutput("sDF") # data frame for vismin*sex
     )
   )
 )
@@ -415,25 +418,25 @@ server <- function(input, output) {
   )
   
   # This reactive will filter degInc
-  filtered_degInc <- reactive(
-    {
-      # Require Geography, sex, gen, and VisM inputs
-      req(input$g, input$Sex, input$gen, input$VisM)
-      
-      # Note that degree and Income are static
-      
-      # Filter values
-      newDT <- degInc
-      
-      newDT <- filter(newDT, Geography == input$g)
-      #newDT <- filter(newDT, Age == input$ag)
-      newDT <- filter(newDT, Sex == input$Sex)
-      newDT <- filter(newDT, `Generation Status` == input$gen)
-      newDT <- newDT %>% filter(`Visible Minority` %in% input$VisM)
-      
-      return(newDT)
-    }
-  )
+  # filtered_degInc <- reactive(
+  #   {
+  #     # Require Geography, sex, gen, and VisM inputs
+  #     req(input$g, input$Sex, input$gen, input$VisM)
+  #     
+  #     # Note that degree and Income are static
+  #     
+  #     # Filter values
+  #     newDT <- degInc
+  #     
+  #     newDT <- filter(newDT, Geography == input$g)
+  #     #newDT <- filter(newDT, Age == input$ag)
+  #     newDT <- filter(newDT, Sex == input$Sex)
+  #     newDT <- filter(newDT, `Generation Status` == input$gen)
+  #     newDT <- newDT %>% filter(`Visible Minority` %in% input$VisM)
+  #     
+  #     return(newDT)
+  #   }
+  # )
   
   filtered_sex <- reactive({
     # Require geography, degree, field of study, and age inputs
@@ -461,6 +464,20 @@ server <- function(input, output) {
     return(newDT)
   })
   
+  filtered_synData <- reactive({
+    # Require Sex, Age, Generation Status, VisMin
+    req(input$Sex, input$ag, input$gen, input$VisM)
+    
+    # Filter values
+    newDT <- synData %>%
+      filter(`Age groups` %in% input$ag, 
+             Sex %in% input$Sex, 
+             `Generation Status` %in% input$gen,
+             `Visible Minority` %in% input$VisM)
+
+    return(newDT)
+  })
+  
   # Output ---------------------------------------------------
   output$df <- renderDataTable({filtered_data()})
   
@@ -470,7 +487,9 @@ server <- function(input, output) {
   
   output$df4 <- renderDataTable({ec2()})
   
-  output$DI <- renderDataTable({filtered_degInc()})
+  #output$DI <- renderDataTable({filtered_degInc()})
+  
+  output$EmI <- renderDataTable({filtered_synData()})
   
   output$sDF <- renderDataTable({filtered_sex()})
   
@@ -478,7 +497,7 @@ server <- function(input, output) {
     req(filtered_sex())
     
     fig <- plot_ly(filtered_sex(), x = ~`Visible Minority Groups`, y = ~Female, type = 'bar', name = "Female",
-                   width = 1000, height = 600) %>%
+                   width = 1000, height = 400) %>%
       add_trace(y = ~Male, name = "Male") %>%
       add_trace(y = ~`Total - Sex`, name = "Total - Sex") %>%
       layout(title = "Population of Visible Minority Groups by Education and Field of Study, 2016", 
@@ -529,32 +548,65 @@ server <- function(input, output) {
   
   output$splot <- renderPlotly({
     
-    # Require filtered_degInc data frame
-    req(filtered_degInc())
+    # degree vs Income scatter plot by Generation
+    # # Require filtered_degInc data frame
+    # req(filtered_degInc())
+    # 
+    # fit <- lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = filtered_degInc()) %>%
+    #       fitted.values()
+    # 
+    # # Plot the scatter plot
+    # sp <- plot_ly(data = filtered_degInc(), x = ~`Percentage by Generation`,
+    #               y = ~`Percentage by Total Income`, type = 'scatter', mode = 'markers',
+    #               text = ~paste('Age: ', Age,
+    #                              '<br>Sex: ', Sex,
+    #                              '<br>Level of Degree:', Education,
+    #                              '<br>Number of People by Generation: ', `Number of People 2`,
+    #                              '<br>Number of People by Total Income:', `Number of People`),
+    #               color = ~`Visible Minority`,
+    #               colors = my_colors,
+    #               width = 1000,
+    #               height = 600) %>%
+    #   add_trace(x = ~`Percentage by Generation`, y = fit, mode = "lines") # Regression lines are overlapping
+    # 
+    # sp <- sp %>%
+    #   layout(title = "Generation vs Employment Income",
+    #          xaxis = list(title = "Generation status with No certificate, diploma, or degree (%)"),
+    #          yaxis = list(title = "Number of People with \"Median Total income ($)\" (%)")
+    #          )
+    # 
+    # sp
     
-    fit <- lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = filtered_degInc()) %>%
-          fitted.values()
+    req(filtered_synData())
+    
+    # Linear regression
+    fit <- lm(`Mean Income` ~ `Percentage employed Full-time`, data = filtered_synData()) %>%
+      fitted.values()
     
     # Plot the scatter plot
-    sp <- plot_ly(data = filtered_degInc(), x = ~`Percentage by Generation`,
-                  y = ~`Percentage by Total Income`, type = 'scatter', mode = 'markers',
-                  text = ~paste('Age: ', Age,
-                                 '<br>Sex: ', Sex,
-                                 '<br>Level of Degree:', Education,
-                                 '<br>Number of People by Generation: ', `Number of People 2`,
-                                 '<br>Number of People by Total Income:', `Number of People`),
+    sp <- plot_ly(data = filtered_synData(), x = ~`Percentage employed Full-time`, y = ~`Mean Income`, 
+                  type = 'scatter', mode = 'markers',
+                  text = ~paste('Ethnic origin: ', `Ethnic origins`,
+                                '<br> Sex: ', Sex,
+                                '<br> Age Group: ', `Age groups`,
+                                '<br> Generation: ', `Generation Status`,
+                                '<br> Proportion with University degree:', `Proportion with univeristy degree`,
+                                '<br> Number of People: ', Counts),
+                  hovertemplate = paste('<b>Mean Income</b>: $%{y}',
+                                        '<br><b>Percentage employed Full-time</b>: %{x}<br>',
+                                        '%{text}'),
                   color = ~`Visible Minority`,
-                  colors = my_colors,
                   width = 1000,
                   height = 600) %>%
-      add_trace(x = ~`Percentage by Generation`, y = fit, mode = "lines") # Regression lines are overlapping
-
+      add_trace(x = ~`Percentage employed Full-time`, y = fit, mode = "lines") # Add Regression lines
+    
+    # Add title and axes titles
     sp <- sp %>%
-      layout(title = "Generation vs Employment Income",
-             xaxis = list(title = "Generation status with No certificate, diploma, or degree (%)"),
-             yaxis = list(title = "Number of People with \"Median Total income ($)\" (%)")
-             )
-
+      layout(title = "Percentage employed Full-time by Mean",
+             xaxis = list(title = "Percentage employed Full-time"),
+             yaxis = list(title = "Mean income ($)")
+      )
+    
     sp
     
   })
