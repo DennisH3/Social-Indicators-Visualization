@@ -39,7 +39,12 @@ setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex",
                                  "Multiple visible minorities 2", "Not a visible minority 2"))
 
 # Read file for scatter plot
-degInc <- read.csv("combined214and275.csv", check.names = FALSE)
+# Important to set check.names TRUE here. There is something about the column
+# names that makes dplyr not recognize them if check.names is FALSE.
+degInc <- read.csv("combined214and275.csv", check.names = TRUE)
+# After using check.names, this adds spaces to the column names so that the rest
+# of the code can be left unchanged.
+names(degInc) <- gsub("\\.", " ", names(degInc))
 
 # Calculate percentages by VisMin
 degInc <- degInc %>%
