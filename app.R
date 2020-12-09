@@ -537,11 +537,30 @@ server <- function(input, output) {
     # Require filtered_degInc data frame
     req(filtered_degInc())
     
-    fit <- lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = filtered_degInc()) %>%
-          fitted.values()
+    # fit <- lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = filtered_degInc()) %>%
+    #       fitted.values()
+    
+    # You can apply lm() with group_by() by using do()
+    # Source: https://github.com/tidyverse/dplyr/issues/2177
+    fit <- filtered_degInc() %>%
+      group_by(`Visible Minority`) %>%
+      do(lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = .) %>%
+           coef() %>%
+           bind_rows()) %>%
+      ungroup()
+    
+    # The names from the lm() won't play nice with dplyr, so we rename them
+    names(fit) <- c("Visible Minority", "intercept", "slope")
+    
+    # In order to make sure that the graph has the same observations in the same
+    # order as our fitted dataset. Without this join they're out of sync and
+    # the regression lines will be scribbled.
+    fitted <- filtered_degInc() %>%
+      inner_join(fit, by = "Visible Minority") %>%
+      mutate(predicted = slope * `Percentage by Generation` + intercept)
     
     # Plot the scatter plot
-    sp <- plot_ly(data = filtered_degInc(), x = ~`Percentage by Generation`,
+    sp <- plot_ly(data = fitted, x = ~`Percentage by Generation`,
                   y = ~`Percentage by Total Income`, type = 'scatter', mode = 'markers',
                   text = ~paste('Age: ', Age,
                                  '<br>Sex: ', Sex,
@@ -552,7 +571,7 @@ server <- function(input, output) {
                   colors = my_colors,
                   width = 1000,
                   height = 600) %>%
-      add_trace(x = ~`Percentage by Generation`, y = fit, mode = "lines") # Regression lines are overlapping
+      add_trace(x = ~`Percentage by Generation`, y = ~predicted, mode = "lines") # Regression lines are overlapping
 
     sp <- sp %>%
       layout(title = "Generation vs Employment Income",
