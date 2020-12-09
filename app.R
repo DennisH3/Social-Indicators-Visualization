@@ -619,7 +619,7 @@ server <- function(input, output) {
     #                             '<br>Number of People by Total Income:', `Number of People`),
     #add_trace(x = ~`Percentage by Generation`, y = ~predicted, mode = "lines") # Regression lines are overlapping
     
-    req(filtered_synData()
+    req(filtered_synData())
 
     # Linear regression
     fit <- lm(`Mean Income` ~ `Percentage employed Full-time`, data = filtered_synData()) %>%
