@@ -38,10 +38,19 @@ setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex",
                                  "South Asian 2", "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
                                  "Multiple visible minorities 2", "Not a visible minority 2"))
 
+
+# Read file for scatter plot
 synData <- read.csv("Synthethic data -income and ethnocultural vars.csv", check.names = FALSE)
 
 # Read file for scatter plot (Generation and Income)
 #degInc <- read.csv("combined214and275.csv", check.names = FALSE)
+
+# Important to set check.names TRUE here. There is something about the column
+# names that makes dplyr not recognize them if check.names is FALSE.
+#degInc <- read.csv("combined214and275.csv", check.names = TRUE)
+# After using check.names, this adds spaces to the column names so that the rest
+# of the code can be left unchanged.
+#names(degInc) <- gsub("\\.", " ", names(degInc))
 
 # Calculate percentages by VisMin
 #degInc <- degInc %>%
@@ -577,8 +586,41 @@ server <- function(input, output) {
     # 
     # sp
     
-    req(filtered_synData())
+    # Fixed version
+    # fit <- lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = filtered_degInc()) %>%
+    #       fitted.values()
     
+    # You can apply lm() with group_by() by using do()
+    # Source: https://github.com/tidyverse/dplyr/issues/2177
+    #fit <- filtered_degInc() %>%
+    #  group_by(`Visible Minority`) %>%
+    #  do(lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = .) %>%
+    #       coef() %>%
+    #       bind_rows()) %>%
+    #  ungroup()
+    
+    # The names from the lm() won't play nice with dplyr, so we rename them
+    #names(fit) <- c("Visible Minority", "intercept", "slope")
+    
+    # In order to make sure that the graph has the same observations in the same
+    # order as our fitted dataset. Without this join they're out of sync and
+    # the regression lines will be scribbled.
+    #fitted <- filtered_degInc() %>%
+    #  inner_join(fit, by = "Visible Minority") %>%
+    #  mutate(predicted = slope * `Percentage by Generation` + intercept)
+    
+    # Plot the scatter plot
+    #sp <- plot_ly(data = fitted, x = ~`Percentage by Generation`,
+    #              y = ~`Percentage by Total Income`, type = 'scatter', mode = 'markers',
+    #              text = ~paste('Age: ', Age,
+    #                             '<br>Sex: ', Sex,
+    #                             '<br>Level of Degree:', Education,
+    #                             '<br>Number of People by Generation: ', `Number of People 2`,
+    #                             '<br>Number of People by Total Income:', `Number of People`),
+    #add_trace(x = ~`Percentage by Generation`, y = ~predicted, mode = "lines") # Regression lines are overlapping
+    
+    req(filtered_synData()
+
     # Linear regression
     fit <- lm(`Mean Income` ~ `Percentage employed Full-time`, data = filtered_synData()) %>%
       fitted.values()

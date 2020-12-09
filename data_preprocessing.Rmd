@@ -26,8 +26,8 @@ employGen <- pivot_longer(employGen, c(7:10), names_to = "Generation Status", va
 
 # Format columns
 employGen <- employGen %>%
-                mutate(`Visible Minority` = gsub("- ", "", toupper(employGen$`Visible Minority`)) %>%
-                mutate(`Generation Status` = toupper(employGen$`Generation Status`)
+                mutate(`Visible Minority` = gsub("- ", "", toupper(employGen$`Visible Minority`))) %>%
+                mutate(`Generation Status` = toupper(employGen$`Generation Status`))
 
 # Rename columns
 setnames(degree, colnames(degree), c("Year", "Geography", "Generation Status", "Age", "Sex", "Education", 
@@ -44,8 +44,8 @@ degree <- pivot_longer(degree, c(7:21), names_to = "Visible Minority", values_to
 
 # Format columns
 degree <- degree %>%
-                mutate(`Generation Status` = gsub("- ", "", toupper(degree$`Generation Status`)) %>%
-                mutate(`Visible Minority` = toupper(degree$`Visible Minority`)
+                mutate(`Generation Status` = gsub("- ", "", toupper(degree$`Generation Status`))) %>%
+                mutate(`Visible Minority` = toupper(degree$`Visible Minority`))
 
 employGen
 degree
@@ -53,7 +53,7 @@ degree
 ```{r}
 # Join both data tables
 degIncome <- inner_join(degree %>% filter(Education == "No certificate, diploma or degree"),
-                        employGen %>% filter(`Total Income Groups` == "Median total income ($)")))
+                        employGen %>% filter(`Total Income Groups` == "Median total income ($)"))
 
 # Remove duplicate rows
 degIncome <- degIncome %>%
