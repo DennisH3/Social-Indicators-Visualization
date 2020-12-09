@@ -3,7 +3,6 @@
 # Date: 11/02/2020
 
 # Next Steps:
-# Test synthetic data
 # Add a choropleth (will use voter turn out data, get GeoJSON file)
 
 # Install packages
@@ -305,7 +304,7 @@ ui <- fluidPage(
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
                plotlyOutput("splot", inline = TRUE, width = 1000, height = 600),
                br(),
-               p("Note: the regression lines overlap.")
+               p("Note: Some combinations of filters will result in an error because that record does not exist in the data.")
              )
          )
     ),
@@ -587,9 +586,6 @@ server <- function(input, output) {
     # sp
     
     # Fixed version
-    # fit <- lm(`Percentage by Total Income` ~ `Percentage by Generation`, data = filtered_degInc()) %>%
-    #       fitted.values()
-    
     # You can apply lm() with group_by() by using do()
     # Source: https://github.com/tidyverse/dplyr/issues/2177
     #fit <- filtered_degInc() %>%
@@ -617,16 +613,34 @@ server <- function(input, output) {
     #                             '<br>Level of Degree:', Education,
     #                             '<br>Number of People by Generation: ', `Number of People 2`,
     #                             '<br>Number of People by Total Income:', `Number of People`),
+    #               color = ~`Visible Minority`,
+    #               colors = my_colors,
+    #               width = 1000,
+    #               height = 600) %>%
     #add_trace(x = ~`Percentage by Generation`, y = ~predicted, mode = "lines") # Regression lines are overlapping
     
     req(filtered_synData())
 
     # Linear regression
-    fit <- lm(`Mean Income` ~ `Percentage employed Full-time`, data = filtered_synData()) %>%
-      fitted.values()
+    fit <- filtered_synData() %>%
+      group_by(`Visible Minority`) %>%
+      do(lm(`Mean Income` ~ `Percentage employed Full-time`, data = .) %>%
+           coef() %>%
+           bind_rows()) %>%
+      ungroup()
+
+    # The names from the lm() won't play nice with dplyr, so we rename them
+    names(fit) <- c("Visible Minority", "intercept", "slope")
+
+    # In order to make sure that the graph has the same observations in the same
+    # order as our fitted dataset. Without this join they're out of sync and
+    # the regression lines will be scribbled.
+    fitted <- filtered_synData() %>%
+      inner_join(fit, by = "Visible Minority") %>%
+      mutate(predicted = slope * `Percentage employed Full-time` + intercept)
     
     # Plot the scatter plot
-    sp <- plot_ly(data = filtered_synData(), x = ~`Percentage employed Full-time`, y = ~`Mean Income`, 
+    sp <- plot_ly(data = fitted, x = ~`Percentage employed Full-time`, y = ~`Mean Income`, 
                   type = 'scatter', mode = 'markers',
                   text = ~paste('Ethnic origin: ', `Ethnic origins`,
                                 '<br> Sex: ', Sex,
@@ -640,7 +654,7 @@ server <- function(input, output) {
                   color = ~`Visible Minority`,
                   width = 1000,
                   height = 600) %>%
-      add_trace(x = ~`Percentage employed Full-time`, y = fit, mode = "lines") # Add Regression lines
+      add_trace(x = ~`Percentage employed Full-time`, y = ~predicted, mode = "lines") # Add Regression lines
     
     # Add title and axes titles
     sp <- sp %>%
