@@ -63,28 +63,23 @@ str(CMA@data)
 # Check property names in CMA
 names(CMA)
 ```
+
 ```{r}
+# Create the ranges for the bins (8 ranges to fit colour palette)
+# Intervals are at max value in Population (4879095) divided by 8 = 609886, rounded to 610000
+bins <- c(0, 610000, 1220000, 1830000, 2440000, 3050000, 3660000, 4270000, Inf)
+pal <- colorBin("Blues", domain = CMA$Population, bins = bins)
+
 # Create the choropleth
-
-
 leaflet(CMA) %>%
   setView(-106.3, 56.1, zoom = 3.5) %>%
   addTiles() %>%
   addPolygons(
-    # weight = 2,
-    # opacity = 1,
-    # color = "white",
-    # fillOpacity = 0.7,
-    # highlight = highlightOptions(
-    #   weight = 5,
-    #   color = "#666",
-    #   dashArray = "",
-    #   fillOpacity = 0.7,
-    #   bringToFront = TRUE),
-    # label = labels,
-    # labelOptions = labelOptions(
-    #   style = list("font-weight" = "normal", padding = "3px 8px"),
-    #   textsize = "15px",
-    #   direction = "auto")
+    fillColor = ~pal(Population),
+    weight = 2,
+    opacity = 1,
+    color = "white",
+    dashArray = "3",
+    fillOpacity = 0.7
     )
 ```
