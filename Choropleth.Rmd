@@ -14,15 +14,63 @@ library(geojsonio)
 library(tigris)
 library(rgdal)
 library(tidyverse)
+library(data.table)
 library(htmltools)
 ```
 
 ```{r}
-CMA <- geojsonio::geojson_read("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json", what = "sp")
+#CMA <- geojsonio::geojson_read("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json", what = "sp")
+CMA <- geojsonio::geojson_read("CMA_CA_2016_with_Residuals.json", what = "sp")
+
+# Check the names
+names(CMA)
+
+CMA <- select(CMA, c("CMAPUID", "CMANAME"))
+
+setnames(CMA, colnames(CMA[2]), "Geography")
 
 names(CMA)
 
-# Need to merge SpatialPolygonDataFrame (spdf) with DataFrame with values
+# Convert to data frame
+CMAdf <- as.data.frame(CMA)
+
+# Select the columns to keep
+CMAdf <- CMAdf %>% select(c("CMAPUID", "CMANAME"))
+
+# Rename CMANAME to Geography
+setnames(CMAdf, colnames(CMAdf[2]), "Geography")
+
+# Display the data frame
+CMAdf
+```
+
+```{r}
+# Read files and select columns of interest
+employGen <- read.csv("98-400-X2016_reduced_pivoted_data.csv", check.names = FALSE)
+
+# Format columns
+#employGen <- employGen %>%
+#                mutate(`Visible Minority` = gsub("- ", "", toupper(employGen$`Visible Minority`))) %>%
+#                mutate(`Generation Status` = toupper(employGen$`Generation Status`))
+
+# Change data types for select columns
+employGen$`Number of People` <- as.integer(employGen$`Number of People`)
+
+employGen
+
+print(unique(employGen$Geography))
+```
+
+```{r}
+# Merge the CMAdf and employGen
+incomeCMA <- geo_join(CMA, employGen, by_sp = "CMANAMES", by_df = "Geography", how = "inner")
+
+incomeCMAdf <- as.data.frame(incomeCMA)
+
+incomeCMAdf
+```
+
+```{r}
 
 leaflet(CMA) %>%
   setView(-106.3, 56.1, zoom = 3.5) %>%
