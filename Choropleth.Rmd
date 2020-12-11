@@ -19,58 +19,53 @@ library(htmltools)
 ```
 
 ```{r}
-#CMA <- geojsonio::geojson_read("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json", what = "sp")
-CMA <- geojsonio::geojson_read("CMA_CA_2016_with_Residuals.json", what = "sp")
-
-# Check the names
-names(CMA)
-
-CMA <- select(CMA, c("CMAPUID", "CMANAME"))
-
-setnames(CMA, colnames(CMA[2]), "Geography")
-
-names(CMA)
-
-# Convert to data frame
-CMAdf <- as.data.frame(CMA)
-
-# Select the columns to keep
-CMAdf <- CMAdf %>% select(c("CMAPUID", "CMANAME"))
-
-# Rename CMANAME to Geography
-setnames(CMAdf, colnames(CMAdf[2]), "Geography")
-
-# Display the data frame
-CMAdf
+# Read the GeoJson file
+#CMA <- readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
+CMA <- readOGR("CMA_CA_2016_with_Residuals.json")
 ```
 
 ```{r}
-# Read files and select columns of interest
+# Read csv file
+# Original file: 98-400-X2016214_English_CSV_data.csv
+# To make the file, first select columns to keep, then pivot_longer Generation Status
 employGen <- read.csv("98-400-X2016_reduced_pivoted_data.csv", check.names = FALSE)
 
-# Format columns
-#employGen <- employGen %>%
-#                mutate(`Visible Minority` = gsub("- ", "", toupper(employGen$`Visible Minority`))) %>%
-#                mutate(`Generation Status` = toupper(employGen$`Generation Status`))
+# Data Cleaning
+# Change Number of People to Population
+setnames(employGen, colnames(employGen[8]), "Population")
 
-# Change data types for select columns
-employGen$`Number of People` <- as.integer(employGen$`Number of People`)
+# If value in Population column is "F" or "...", assign NA
+employGen$Population[employGen$Population == "F" | employGen$Population == "..."] <- NA
 
+# Change Population column to integer
+employGen$Population <- as.integer(employGen$Population)
+
+# Change Geography to CMANAME to be the key to merge by
+setnames(employGen, colnames(employGen[2]), "CMANAME")
+
+# Remove all rows for Population with 
+employGen <- employGen[complete.cases(employGen),]
+
+# Check the list of unique geography
+print(unique(employGen$CMANAME))
+
+# Print updated data frame
 employGen
-
-print(unique(employGen$Geography))
 ```
 
 ```{r}
-# Merge the CMAdf and employGen
-incomeCMA <- geo_join(CMA, employGen, by_sp = "CMANAMES", by_df = "Geography", how = "inner")
+# Merge CMA and employGen (add employGen dataframe as properties to the geoJSON file)
+CMA@data <- merge(CMA@data, employGen)
 
-incomeCMAdf <- as.data.frame(incomeCMA)
+# Confirm the merge
+str(CMA@data)
 
-incomeCMAdf
+# Check property names in CMA
+names(CMA)
 ```
-
 ```{r}
+# Create the choropleth
+
 
 leaflet(CMA) %>%
   setView(-106.3, 56.1, zoom = 3.5) %>%
@@ -93,69 +88,3 @@ leaflet(CMA) %>%
     #   direction = "auto")
     )
 ```
-
-
-```{r}
-# Census Metropolitan Areas
-CMA <- rgdal::readOGR("~/social_indicatorsVis/TopoJSON/CMA2016CBFTopo(25).json")
-#CMA <- geojsonio::topojson_read("~/social_indicatorsVis/TopoJSON/CMA2016CBFTopo(25).json", what = "sp")
-
-print(CMA)
-
-plot(CMA)
-
-# leaflet(CMA) %>%
-#   setView(-96, 37.8, 4) %>%
-#   addProviderTiles("MapBox", options = providerTileOptions(
-#     id = "mapbox.light",
-#     accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
-#   addPolygons(
-#     weight = 2,
-#     opacity = 1,
-#     color = "white",
-#     #fillOpacity = 0.7,
-#     highlight = highlightOptions(
-#       weight = 5,
-#       color = "#666",
-#       dashArray = "",
-#       fillOpacity = 0.7,
-#       bringToFront = TRUE),
-#     label = labels,
-#     labelOptions = labelOptions(
-#       style = list("font-weight" = "normal", padding = "3px 8px"),
-#       textsize = "15px",
-#       direction = "auto"))
-```
-
-```{r}
-topoData <- readLines("~/social_indicatorsVis/TopoJSON/CMA2016CBFTopo(25).json") %>% paste(collapse = "\n")
-income <- read.csv("98-400-X2016214_English_CSV_data.csv", check.names = FALSE)
-
-print(topoData)
-
-leaflet() %>%
-  addTiles() %>%
-  setView(-106.3, 56.1, zoom = 3.5) %>%
-  addTopoJSON(topoData, weight = 1, color = "#444444", fill = FALSE)
-```
-
-```{r}
-CMA <- rgdal::readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
-
-print(CMA)
-
-CAN <- rgdal::readOGR("~/social_indicatorsVis/TopoJSON/CAN_PR_CMA_2016.json")
-
-print(CAN)
-```
-
-```{r}
-pal <- colorNumeric("viridis", NULL)
-
-leaflet(CMA) %>%
-  addTiles() %>%
-  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 1)
-    #fillColor = ~pal(log10(pop)),
-    #label = ~paste0(county, ": ", formatC(pop, big.mark = ",")))
-```
-
