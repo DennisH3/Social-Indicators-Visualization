@@ -1,0 +1,113 @@
+---
+title: "Choropleth"
+output: html_notebook
+---
+
+```{r}
+#install.packages("leaflet")
+#install.packages("tigris")
+```
+
+```{r}
+library(leaflet)
+library(geojsonio)
+library(tigris)
+library(rgdal)
+library(tidyverse)
+library(htmltools)
+```
+
+```{r}
+CMA <- geojsonio::geojson_read("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json", what = "sp")
+
+names(CMA)
+
+# Need to merge SpatialPolygonDataFrame (spdf) with DataFrame with values
+
+leaflet(CMA) %>%
+  setView(-106.3, 56.1, zoom = 3.5) %>%
+  addTiles() %>%
+  addPolygons(
+    # weight = 2,
+    # opacity = 1,
+    # color = "white",
+    # fillOpacity = 0.7,
+    # highlight = highlightOptions(
+    #   weight = 5,
+    #   color = "#666",
+    #   dashArray = "",
+    #   fillOpacity = 0.7,
+    #   bringToFront = TRUE),
+    # label = labels,
+    # labelOptions = labelOptions(
+    #   style = list("font-weight" = "normal", padding = "3px 8px"),
+    #   textsize = "15px",
+    #   direction = "auto")
+    )
+```
+
+
+```{r}
+# Census Metropolitan Areas
+CMA <- rgdal::readOGR("~/social_indicatorsVis/TopoJSON/CMA2016CBFTopo(25).json")
+#CMA <- geojsonio::topojson_read("~/social_indicatorsVis/TopoJSON/CMA2016CBFTopo(25).json", what = "sp")
+
+print(CMA)
+
+plot(CMA)
+
+# leaflet(CMA) %>%
+#   setView(-96, 37.8, 4) %>%
+#   addProviderTiles("MapBox", options = providerTileOptions(
+#     id = "mapbox.light",
+#     accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
+#   addPolygons(
+#     weight = 2,
+#     opacity = 1,
+#     color = "white",
+#     #fillOpacity = 0.7,
+#     highlight = highlightOptions(
+#       weight = 5,
+#       color = "#666",
+#       dashArray = "",
+#       fillOpacity = 0.7,
+#       bringToFront = TRUE),
+#     label = labels,
+#     labelOptions = labelOptions(
+#       style = list("font-weight" = "normal", padding = "3px 8px"),
+#       textsize = "15px",
+#       direction = "auto"))
+```
+
+```{r}
+topoData <- readLines("~/social_indicatorsVis/TopoJSON/CMA2016CBFTopo(25).json") %>% paste(collapse = "\n")
+income <- read.csv("98-400-X2016214_English_CSV_data.csv", check.names = FALSE)
+
+print(topoData)
+
+leaflet() %>%
+  addTiles() %>%
+  setView(-106.3, 56.1, zoom = 3.5) %>%
+  addTopoJSON(topoData, weight = 1, color = "#444444", fill = FALSE)
+```
+
+```{r}
+CMA <- rgdal::readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
+
+print(CMA)
+
+CAN <- rgdal::readOGR("~/social_indicatorsVis/TopoJSON/CAN_PR_CMA_2016.json")
+
+print(CAN)
+```
+
+```{r}
+pal <- colorNumeric("viridis", NULL)
+
+leaflet(CMA) %>%
+  addTiles() %>%
+  addPolygons(stroke = FALSE, smoothFactor = 0.3, fillOpacity = 1)
+    #fillColor = ~pal(log10(pop)),
+    #label = ~paste0(county, ": ", formatC(pop, big.mark = ",")))
+```
+
