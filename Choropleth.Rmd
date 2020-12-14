@@ -54,8 +54,9 @@ employGen
 ```
 
 ```{r}
-# Merge CMA and employGen (add employGen dataframe as properties to the geoJSON file)
-CMA@data <- merge(CMA@data, employGen)
+# Merge CMA and employGen (add employGen dataframe as properties to the geoJSON file) and Select columns to keep
+CMA@data <- select(merge(CMA@data, employGen), c("CMANAME", "Year", "Visible minority", "Age", "Sex",
+                                                 "Total income groups", "Generation Status", "Population"))
 
 # Confirm the merge
 str(CMA@data)
@@ -78,8 +79,6 @@ leaflet(CMA) %>%
     fillColor = ~pal(Population),
     weight = 2,
     opacity = 1,
-    color = "white",
-    dashArray = "3",
     fillOpacity = 0.7
     )
 ```
