@@ -91,9 +91,12 @@ filtered_EG
 ```{r}
 # When merging the data, there should only be 30 rows (The intersect of CMANAME)
 # Merge the data and select the columns to keep
-CMA@data <- select(merge(CMA@data, filtered_EG, by = "CMANAME"), c("CMANAME", "Visible minority", "Age", "Sex", 
+CMA@data <- select(left_join(CMA@data, filtered_EG), c("CMANAME", "Visible minority", "Age", "Sex", 
                                                    "Total income groups", "Generation Status",
                                                    "Population"))
+
+# If Population = NA, assign 0
+CMA@data$Population[is.na(CMA@data$Population)] <- 0
 
 # Display to confirm
 CMA@data
@@ -104,7 +107,7 @@ CMA@data
 bins <- c(0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, Inf)
 
 # Colour palette for the intervals
-pal <- colorBin("Purples", domain = CMA$Population, bins = bins)
+pal <- colorBin("Purples", domain = CMA$Population, bins = bins, na.color = NA)
 
 hoverText <- sprintf(
   "<strong>Visible Minority: %s</strong>
@@ -114,13 +117,13 @@ hoverText <- sprintf(
   <br>Sex: %s 
   <br>Total income groups: %s 
   <br>Generation Status: %s", 
-  CMA@data$`Visible minority`, CMA@data$CMANAME,CMA@data$Population, CMA@data$Age,
+  CMA@data$`Visible minority`, CMA@data$CMANAME, if (CMA@data$Population == 0){print(NA)}, CMA@data$Age,
   CMA@data$Sex, CMA@data$`Total income groups`, CMA@data$`Generation Status`
 ) %>% lapply(htmltools::HTML)
 
 # Create the choropleth
 leaflet(CMA) %>%
-  setView(-106.3, 56.1, zoom = 3.5) %>%
+  setView(-106.3, 56.1, zoom = 4.5) %>%
   addTiles() %>%
   addPolygons(
     fillColor = ~pal(Population),
