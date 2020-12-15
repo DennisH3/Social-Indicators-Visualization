@@ -62,6 +62,9 @@ synData <- read.csv("Synthethic data -income and ethnocultural vars.csv", check.
 #            dplyr::mutate(`Percentage by Generation` = `Number of People 2`/sum(`Number of People 2`) * 100) %>%
 #            dplyr::mutate(`Percentage by Total Income` = `Number of People`/sum(`Number of People`) * 100)
 
+# Read file for line graph
+lineData <- read.csv("Synth_data_01-16.csv", check.names = FALSE)
+
 # Read the GeoJson file
 CMA <- readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
 
@@ -301,9 +304,19 @@ ui <- fluidPage(
                                 selected = "First generation"
                  ),
                  
+                 helpText("This is for the scatter plot"),
+                 
                  checkboxGroupInput("VisM", 
                                     label = "Visible Minority",
                                     choices = unique(synData$`Visible Minority`),
+                                    selected = "South Asian"
+                 ),
+                 
+                 helpText("This is for the line graph"),
+                 
+                 checkboxGroupInput("VisMi", 
+                                    label = "Visible Minority",
+                                    choices = unique(lineData$`Visible Minority`),
                                     selected = "South Asian"
                  ),
                  
@@ -332,12 +345,14 @@ ui <- fluidPage(
               ),
                  
              mainPanel(
-               h1("Scatter Plot"),
+               h1("Scatter Plot and Line Graph"),
                h4("To filter the data, please select Generation Status, Age, and Sex first.
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
                plotlyOutput("splot", inline = TRUE, width = 1000, height = 600),
                br(),
-               p("Note: Some combinations of filters will result in an error because that record does not exist in the data.")
+               p("Note: Some combinations of filters will result in an error because that record does not exist in the data."),
+               br(),
+               plotlyOutput("lgraph", width = 1000, height = 600)
              )
          )
     ),
@@ -571,6 +586,7 @@ server <- function(input, output) {
   
   # This reactive filters the synthetic data for the scatter plot
   filtered_synData <- reactive({
+    
     # Require Sex, Age, Generation Status, VisMin
     req(input$Sex, input$ag, input$gen, input$VisM)
     
@@ -581,6 +597,22 @@ server <- function(input, output) {
              `Generation Status` %in% input$gen,
              `Visible Minority` %in% input$VisM)
 
+    return(newDT)
+  })
+  
+  # This reactive filters the line plot data
+  filtered_lineData <- reactive({
+    
+    # Require Sex, Age, Generation Status, VisMin
+    req(input$Sex, input$ag, input$gen, input$VisMi)
+    
+    # Filter values
+    newDT <- lineData %>%
+      filter(`Age groups` %in% input$ag, 
+             Sex %in% input$Sex, 
+             `Generation Status` %in% input$gen,
+             `Visible minorities` %in% input$VisMi)
+    
     return(newDT)
   })
   
@@ -781,6 +813,17 @@ server <- function(input, output) {
     
   })
   
+  # line graph
+  output$lgraph <- renderPlotly({
+    
+    # Require filtered_lineData
+    req(filtered_lineData())
+    
+    lp <- plot_ly(data = filtered_lineData(), x = ~Year, y = `Average income`)
+    
+  })
+  
+  # Choropleth
   output$map <- renderLeaflet({
     
     # Require filtered_EG()
