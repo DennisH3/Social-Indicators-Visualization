@@ -2,11 +2,13 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
-# Next Steps:
-# Add a choropleth (will use voter turn out data, get GeoJSON file)
+# Next steps:
+# Create a line graph beneath the scatter plot. Waiting for the data
 
 # Install packages
 #install.packages("plotly")
+#install.packages("leaflet")
+#Need to conda install r-rgdal
 
 # Load packages
 library(shiny)
@@ -14,6 +16,9 @@ library(tidyverse)
 library(data.table)
 library(plotly)
 library(RColorBrewer)
+library(leaflet)
+library(rgdal)
+library(htmltools)
 
 # Original combined file size was 847.158 MB (274) and 17.062 MB (275)
 # Reduced size = 561.656176 MB
@@ -57,8 +62,36 @@ synData <- read.csv("Synthethic data -income and ethnocultural vars.csv", check.
 #            dplyr::mutate(`Percentage by Generation` = `Number of People 2`/sum(`Number of People 2`) * 100) %>%
 #            dplyr::mutate(`Percentage by Total Income` = `Number of People`/sum(`Number of People`) * 100)
 
+# Read the GeoJson file
+CMA <- readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
+
+# Create a copy of the original CMA data (only do this once)
+# Always use this to merge, since have to update CMA@data
+ogCMAData <- CMA@data
+
+# Read csv file
+# Original file: 98-400-X2016214_English_CSV_data.csv
+# To make the file, first select columns to keep, then pivot_longer Generation Status
+employGen <- read.csv("98-400-X2016_reduced_pivoted_data.csv", check.names = FALSE)
+
+# Data Cleaning
+# Change Number of People to Population
+setnames(employGen, colnames(employGen[8]), "Population")
+
+# If value in Population column is "F" or "...", assign NA
+employGen$Population[employGen$Population == "F" | employGen$Population == "..."] <- NA
+
+# Change Population column to integer
+employGen$Population <- as.integer(employGen$Population)
+
+# Change Geography to CMANAME to be the key to merge by
+setnames(employGen, colnames(employGen[2]), "CMANAME")
+
+# Remove all rows for Population with NA
+employGen <- employGen[complete.cases(employGen),]
+
 # Set color ramp 
-my_colors <- colorRampPalette(brewer.pal(8, 'Dark2'))(15)
+my_colors <- colorRampPalette(brewer.pal(15, 'Dark2'))(15)
 
 # Define UI ----
 ui <- fluidPage(
@@ -308,8 +341,71 @@ ui <- fluidPage(
              )
          )
     ),
+    
+    # Third Tab
+    tabPanel("Income by CMA", fluid = TRUE,
+             sidebarLayout(
+               sidebarPanel(
+                 
+                 helpText("Changing this does nothing"),
+                 
+                 selectizeInput("yr", 
+                                label = "Year",
+                                choices = list("2016", 
+                                               "2017",
+                                               "2018", 
+                                               "2019"),
+                                selected = "2016"
+                 ),
+                 
+                 h4("Indicators"),
+                 
+                 selectizeInput("Income",
+                                label = "Income",
+                                choices = unique(employGen$`Total income groups`),
+                                selected = "Total - Total income"
+                 ),
+                 
+                 selectizeInput("gs",
+                                    label = "Generation Status",
+                                    choices = sort(unique(employGen$`Generation Status`)),
+                                    selected = "Total - Generation status"
+                 ),
+                 
+                 selectizeInput("VisMin", 
+                                    label = "Visible Minority",
+                                    choices = unique(employGen$`Visible minority`),
+                                    selected = "Total - Visible minority"
+                 ),
+                 
+                 h4("Sub-populations"),
+                 
+                 selectizeInput("Age", 
+                                    label = "Age Group",
+                                    choices = unique(employGen$Age),
+                                    selected = "Total - Age"
+                 ),
+                 
+                 selectizeInput("s", 
+                                    label = "Sex",
+                                    choices = sort(unique(employGen$Sex), decreasing = TRUE),
+                                    selected = "Total - Sex"
+                 )
+                 
+               ),
+               
+               mainPanel(
+                 h1("Choropleth"),
+                 h4("To filter the data, please select Total Income Group, Generation Status, Age, and Sex first.
+                  Then select the Visible Minorities."),
+                 leafletOutput("map", width = 1000, height = 600),
+                 br(),
+                 p("Note: Some combinations of filters will result in an error because that record does not exist in the data.")
+               )
+             )
+    ),
   
-    # Third Tab to check if tables are properly filtering
+    # Debug Tab to check if tables are properly filtering
     tabPanel(
       "Debug", fluid = TRUE,
       h1("Filtered Data Tables"),
@@ -446,6 +542,7 @@ server <- function(input, output) {
   #   }
   # )
   
+  # This reactive filters for sex to build the first column graph on the first tab
   filtered_sex <- reactive({
     # Require geography, degree, field of study, and age inputs
     req(input$geo, input$deg, input$fos, input$age, input$VM)
@@ -472,6 +569,7 @@ server <- function(input, output) {
     return(newDT)
   })
   
+  # This reactive filters the synthetic data for the scatter plot
   filtered_synData <- reactive({
     # Require Sex, Age, Generation Status, VisMin
     req(input$Sex, input$ag, input$gen, input$VisM)
@@ -484,6 +582,21 @@ server <- function(input, output) {
              `Visible Minority` %in% input$VisM)
 
     return(newDT)
+  })
+  
+  # This reactive filters the employGen data for the choropleth
+  filtered_EG <- reactive ({
+    
+    # Require Sex, Age, Generation Status, VisMin, and Income
+    req(input$s, input$Age, input$gs, input$VisMin, input$Income)
+    
+    # Filter employGen by user input
+    EG <- employGen %>%
+      filter(`Visible minority` == input$VisMin, Age == input$Age, 
+             Sex == input$s, `Total income groups` == input$Income, 
+             `Generation Status` == input$gs)
+    
+    return(EG)
   })
   
   # Output ---------------------------------------------------
@@ -619,6 +732,7 @@ server <- function(input, output) {
     #               height = 600) %>%
     #add_trace(x = ~`Percentage by Generation`, y = ~predicted, mode = "lines") # Regression lines are overlapping
     
+    # Require filtered_synData()
     req(filtered_synData())
 
     # Linear regression
@@ -664,6 +778,65 @@ server <- function(input, output) {
       )
     
     sp
+    
+  })
+  
+  output$map <- renderLeaflet({
+    
+    # Require filtered_EG()
+    req(filtered_EG())
+    
+    # When merging the data, there should only be 30 rows (The intersect of CMANAME)
+    # Merge the data and select the columns to keep
+    CMA@data <- select(left_join(ogCMAData, filtered_EG()), c("CMANAME", "Visible minority", "Age", "Sex", 
+                                                           "Total income groups", "Generation Status",
+                                                           "Population"))
+    
+    # Create the ranges for the bins (8 ranges to fit colour palette)
+    # Change bin intervals to make fill more visible
+    bins <- c(0, 8000, 16000, 24000, 32000, 40000, 44000, 48000, Inf)
+    
+    # Colour palette for the intervals
+    pal <- colorBin("Purples", domain = CMA$Population, bins = bins, na.color = "#fcfbfd")
+    
+    # Customize the hovertext over the map
+    hoverText <- sprintf(
+      "<strong>Visible Minority: %s</strong>
+      <br>Geography: <em>%s</em>
+      <br>Number of People: <em>%d</em>
+      <br>Age: %s
+      <br>Sex: %s 
+      <br>Total income groups: %s 
+      <br>Generation Status: %s", 
+      CMA@data$`Visible minority`, CMA@data$CMANAME, CMA@data$Population, CMA@data$Age,
+      CMA@data$Sex, CMA@data$`Total income groups`, CMA@data$`Generation Status`
+    ) %>% lapply(htmltools::HTML)
+    
+    # Create the choropleth
+    m <- leaflet(CMA) %>%
+      setView(-106.3, 56.1, zoom = 5) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~pal(Population),
+        weight = 2,
+        opacity = 1,
+        fillOpacity = 0.7,
+        highlight = highlightOptions(
+          weight = 5,
+          color = "#666",
+          fillOpacity = 0.7,
+          bringToFront = TRUE
+        ),
+        label = hoverText,
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "3px 8px"),
+          textsize = "15px",
+          direction = "auto"
+        )
+      ) %>%
+      addLegend(pal = pal, values = ~Population, opacity = 0.7, title = "Number of People", position = "topright")
+    
+    m
     
   })
 }
