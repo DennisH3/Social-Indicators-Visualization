@@ -3,9 +3,10 @@
 # Date: 11/02/2020
 
 # Next steps:
-# Create a line graph beneath the scatter plot. Waiting for the data
+# Create a line graph beneath the scatter plot
 
 # Install packages
+#install.packages("tidyverse")
 #install.packages("plotly")
 #install.packages("leaflet")
 #Need to conda install r-rgdal
@@ -63,7 +64,8 @@ synData <- read.csv("Synthethic data -income and ethnocultural vars.csv", check.
 #            dplyr::mutate(`Percentage by Total Income` = `Number of People`/sum(`Number of People`) * 100)
 
 # Read file for line graph
-lineData <- read.csv("Synth_data_01-16.csv", check.names = FALSE)
+lineData <- select(read.csv("Synth_data_01-16.csv", check.names = FALSE), 
+                   c("Year", "Visible minorities", "Sex", "Generation Status", "Age groups", "Average income"))
 
 # Read the GeoJson file
 CMA <- readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
@@ -316,7 +318,7 @@ ui <- fluidPage(
                  
                  checkboxGroupInput("VisMi", 
                                     label = "Visible Minority",
-                                    choices = unique(lineData$`Visible Minority`),
+                                    choices = unique(lineData$`Visible minorities`),
                                     selected = "South Asian"
                  ),
                  
@@ -613,6 +615,16 @@ server <- function(input, output) {
              `Generation Status` %in% input$gen,
              `Visible minorities` %in% input$VisMi)
     
+    # Calculate sums
+    if (length(input$ag) > 1) {
+      
+    }
+    
+    # Pivot by VisMin
+    newDT <- pivot_wider(newDT, 
+                         names_from = `Visible minorities`, 
+                         values_from = `Average income`)
+    
     return(newDT)
   })
   
@@ -819,7 +831,33 @@ server <- function(input, output) {
     # Require filtered_lineData
     req(filtered_lineData())
     
-    lp <- plot_ly(data = filtered_lineData(), x = ~Year, y = `Average income`)
+    # Create the base graph
+    lp <- plot_ly(data = filtered_lineData(), x = ~Year)
+    
+    # Add each series one-by-one as new traces
+    for (i in 5:length(colnames(filtered_lineData()))) {
+      lp <- lp %>%
+        add_trace(x = filtered_lineData()$Year, y = filtered_lineData()[[i]], 
+                  type = "scatter", mode = "lines+markers",
+                  name = colnames(filtered_lineData())[i])
+    }
+    
+    # Note hovermode = "x unified" is not working as it is supposed to
+    # Best work-around was used in xaxis with spike layout
+    lp <- lp %>% 
+      layout(title = "Average Income for Visible Minority Groups by Census Years", 
+             hovermode = "x unified",
+             xaxis = list(title = "Year",
+                          showspikes = TRUE,
+                          spikecolor = "black",
+                          spikethickness = 2,
+                          spikemode  = 'toaxis+across',
+                          spikesnap = 'data',
+                          showline=TRUE),
+             yaxis = list(title = "Average Income ($)")
+      )
+    
+    lp
     
   })
   
