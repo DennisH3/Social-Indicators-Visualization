@@ -13,33 +13,52 @@ library(data.table)
 # Read the data and select columns to keep
 lData <- select(read.csv("Synth_data_01-16.csv", check.names = FALSE), 
                 c("Year", "Visible minorities", "Sex", "Generation Status", "Age groups", "Average income"))
-
 # Print the data frame
 lData
 ```
 
 ```{r}
+# Define the inputs
+inputSex <- c("Female", "Male")
+inputGen <- c("First generation", "Second generation")
+inputAge <- c("15-29", "30-44")
+
 # Filter the data
 newDT <- filter(lData,
-                Sex == "Female",
-                `Generation Status` == "First generation",
-                `Age groups` == "15-29")
+                Sex %in% inputSex,
+                `Generation Status` %in% inputGen,
+                `Age groups` %in% inputAge)
+newDT
+```
+
+```{r}
+# If any of the inputs have multiple selections
+if (inputSex > 1 | inputGen > 1 | inputAge > 1) {
+  
+  # Group by Year and VisMin, then calculate total average income
+  newDT <- newDT %>%
+    group_by(Year, `Visible minorities`) %>%
+    summarise(`Average income` = sum(`Average income`), .groups = 'drop')
+  
+  # Convert to data frame
+  newDT <- as.data.frame(newDT)
+}
 
 newDT
 ```
+
 
 ```{r}
 # Pivot the data
 pDT <- pivot_wider(newDT,
                    names_from = `Visible minorities`,
                    values_from = `Average income`)
-
 pDT
 ```
 
 ```{r}
 # Create data frame of VisMin Groups' Average Income to be plotted
-VM <- select(pDT, c("South Asian", "Chinese", "Black"))
+VM <- select(pDT, c("Aboriginal", "Chinese", "Black"))
 
 # Create the base graph
 fig <- plot_ly(VM, x = ~Year)
@@ -65,7 +84,5 @@ fig <- fig %>%
                       showline=TRUE),
          yaxis = list(title = "Average Income ($)")
          )
-
 fig
 ```
-
