@@ -1,0 +1,101 @@
+---
+title: "Dynamic Scatter Plot"
+output: html_notebook
+---
+
+```{r}
+install.packages("plotly")
+```
+
+```{r}
+library(plotly)
+library(tidyverse)
+library(data.table)
+```
+
+```{r}
+# Read the data and select columns to keep
+spData <- read.csv("VM, ethnocultural, socioeconomic.csv", check.names = FALSE)
+
+# Print
+spData
+```
+
+```{r}
+# Define the inputs
+inputVM <- c("Japanese", "Chinese", "Korean")
+inputSex <- c("Female", "Male")
+inputGen <- c("First generation", "Second generation")
+inputAge <- c("15-29", "30-44")
+
+# Filter the data
+newDT <- filter(spData,
+                `Visible Minority` %in% inputVM,
+                Sex %in% inputSex,
+                `Generation Status` %in% inputGen,
+                `Age group` %in% inputAge)
+newDT
+```
+
+```{r}
+# Select x
+inputX <- "Percentage with a post-secondary degree"
+
+# Select y
+inputY <- "Mean Income"
+
+# Select the columns to keep
+newDT <- select(newDT, c("Visible Minority", "Ethnic origin", "Place of birth", "Sex",
+                         "Generation Status", "Age group", "Count", inputX, inputY))
+
+# Print
+newDT
+```
+
+```{r}
+# Linear regression
+fit <- newDT %>%
+  group_by(`Visible Minority`) %>%
+  do(lm(newDT[[inputY]] ~ newDT[[inputX]], data = .) %>%
+       coef() %>%
+       bind_rows()) %>%
+  ungroup()
+
+# The names from the lm() won't play nice with dplyr, so we rename them
+names(fit) <- c("Visible Minority", "intercept", "slope")
+
+# In order to make sure that the graph has the same observations in the same
+# order as our fitted dataset. Without this join they're out of sync and
+# the regression lines will be scribbled.
+fitted <- newDT %>%
+  inner_join(fit, by = "Visible Minority") %>%
+  mutate(predicted = slope * newDT[[inputX]] + intercept)
+```
+
+```{r}
+# Create the base graph
+fig <- plot_ly(fitted, x = ~fitted[[inputX]], y = fitted[[inputY]], type = "scatter", mode = "markers",
+              text = ~paste('Ethnic origin: ', `Ethnic origin`,
+                            '<br> Place of birth', `Place of birth`,
+                            '<br> Sex: ', Sex,
+                            '<br> Age Group: ', `Age group`,
+                            '<br> Generation: ', `Generation Status`,
+                            '<br> Number of People: ', Count),
+              hovertemplate = paste('<b>%{y.name}</b>: %{y}',
+                                    '<br><b>%{x.name}</b>: %{x}<br>',
+                                    '%{text}'),
+              color = ~`Visible Minority`,
+              width = 600,
+              height = 600) %>%
+      add_trace(x = ~fitted[[inputX]], y = ~predicted, mode = "lines") # Add Regression lines
+    
+# Add title and axes titles
+fig <- fig %>%
+  layout(title = paste(inputX, "by", inputY),
+         xaxis = list(title = inputX),
+         yaxis = list(title = inputY)
+  )
+
+fig
+```
+

@@ -2,9 +2,6 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
-# Next steps:
-# Create a line graph beneath the scatter plot
-
 # Install packages
 #install.packages("tidyverse")
 #install.packages("plotly")
@@ -67,6 +64,9 @@ synData <- read.csv("Synthethic data -income and ethnocultural vars.csv", check.
 lineData <- select(read.csv("Synth_data_01-16.csv", check.names = FALSE), 
                    c("Year", "Visible minorities", "Sex", "Generation Status", "Age groups", "Average income"))
 
+# Read file for dynamic scatter plot
+spData <- read.csv("VM, ethnocultural, socioeconomic.csv", check.names = FALSE)
+
 # Read the GeoJson file
 CMA <- readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
 
@@ -102,6 +102,8 @@ my_colors <- colorRampPalette(brewer.pal(15, 'Dark2'))(15)
 ui <- fluidPage(
   titlePanel("Ethnocultural Groups Visualizations, 2016"),
   tabsetPanel(
+    
+    # Bar Graphs Tab
     tabPanel("Intersectionality Analyses", fluid = TRUE,
              sidebarLayout(
                sidebarPanel(
@@ -243,7 +245,7 @@ ui <- fluidPage(
              )
     ),
     
-    # Second Tab
+    # Scatter plot and Line Graph Tab
     tabPanel("Similarity and Differences", fluid = TRUE,
              sidebarLayout(
                sidebarPanel(
@@ -359,7 +361,111 @@ ui <- fluidPage(
          )
     ),
     
-    # Third Tab
+    # Dynamic Scatter Plot Tab
+    tabPanel("Dynamic Scatter Plot", fluid = TRUE,
+             sidebarLayout(
+               sidebarPanel(
+
+                 helpText("Changing this does nothing"),
+
+                 selectizeInput("yr",
+                                label = "Year",
+                                choices = list("2016",
+                                               "2017",
+                                               "2018",
+                                               "2019"),
+                                selected = "2016"
+                 ),
+
+                 h4("Framework Components Participation"),
+
+                 helpText("Changing this does nothing"),
+
+                 # Will change to multi-select selective input with limit 6
+                 selectizeInput("Lm",
+                                label = "Labour Market",
+                                choices = list("Employment Income" = 1,
+                                               "Annual full-time full-year wage" = 2,
+                                               "Full-time full year employment" = 3,
+                                               "Labour force particpation" = 4,
+                                               "Employment rate" = 5,
+                                               "Unemployment rate" = 6,
+                                               "Youth NEET" = 7,
+                                               "Overqualification" = 8,
+                                               "Self-employment" = 9,
+                                               "Precarious employment" = 10),
+                                options = list(placeholder = 'Please select an option below',
+                                               onInitialize = I('function() { this.setValue(""); }')
+                                )
+
+                 ),
+
+                 helpText("Select the X variable"),
+
+                 selectizeInput("inputX",
+                                label = "X Variable",
+                                choices = list("Percentage employed Full-time",
+                                               "Mean Income",
+                                               "Percentage with a post-secondary degree",
+                                               "Percentage home owners"),
+                                selected = "Percentage with a post-secondary degree"
+
+                 ),
+
+                 helpText("Select the Y variable"),
+
+                 selectizeInput("inputX",
+                                label = "Y Variable",
+                                choices = list("Percentage employed Full-time",
+                                               "Mean Income",
+                                               "Percentage with a post-secondary degree",
+                                               "Percentage home owners"),
+                                selected = "Mean Income"
+
+                 ),
+
+                 h4("Indicators"),
+
+                 checkboxGroupInput("genS",
+                                    label = "Generation Status",
+                                    choices = sort(unique(spData$`Generation Status`)),
+                                    selected = "First generation"
+                 ),
+
+                 checkboxGroupInput("VisiM",
+                                    label = "Visible Minority",
+                                    choices = unique(spData$`Visible Minority`),
+                                    selected = "Not a visible minority"
+                 ),
+
+                 h4("Sub-populations"),
+
+                 checkboxGroupInput("AgeG",
+                                    label = "Age Group",
+                                    choices = unique(spData$`Age group`),
+                                    selected = "15-29"
+                 ),
+
+                 checkboxGroupInput("spSex",
+                                    label = "Sex",
+                                    choices = unique(spData$Sex),
+                                    selected = "Female"
+                 )
+
+               ),
+
+               mainPanel(
+                 h1("Dynamic Scatter Plot"),
+                 h4("To filter the data, please select Visible Minority, Generation Status, Age, and Sex first.
+                  Then select the X and Y variables. This will produce a scatter plot"),
+                 plotlyOutput("dynSP", inline = TRUE, width = 1000, height = 600),
+                 br(),
+                 p("Note: Some combinations of filters will result in an error because that record does not exist in the data.")
+               )
+             )
+    ),
+    
+    # Choropleth Tab
     tabPanel("Income by CMA", fluid = TRUE,
              sidebarLayout(
                sidebarPanel(
@@ -635,6 +741,26 @@ server <- function(input, output) {
     return(newDT)
   })
   
+  # This reactive filters spData for the dynamic scatter plot
+  filtered_sp <- reactive({
+    
+    # Require Sex, Age, Generation Status, VisMin, inputX, and inputY
+    req(input$spSex, input$AgeG, input$genS, input$VisiM, input$inputX, input$inputY)
+    
+    # Filter the data
+    newDT <- filter(spData,
+                    `Visible Minority` %in% input$VisiM,
+                    Sex %in% input$spSex,
+                    `Generation Status` %in% input$genS,
+                    `Age group` %in% input$AgeG)
+    
+    # Select the columns to keep
+    newDT <- select(newDT, c("Visible Minority", "Ethnic origin", "Place of birth", "Sex",
+                             "Generation Status", "Age group", "Count", input$inputX, input$inputY))
+    
+    return(newDT)
+  })
+  
   # This reactive filters the employGen data for the choropleth
   filtered_EG <- reactive ({
     
@@ -866,6 +992,56 @@ server <- function(input, output) {
     
     lp
     
+  })
+  
+  output$dynSP <-renderPlotly({
+    
+    # Require filtered_sp()
+    req(filtered_sp())
+    
+    # Linear regression
+    fit <- filtered_sp() %>%
+      group_by(`Visible Minority`) %>%
+      do(lm(filtered_sp()[[input$inputY]] ~ filtered_sp()[[input$inputX]], data = .) %>%
+           coef() %>%
+           bind_rows()) %>%
+      ungroup()
+    
+    # The names from the lm() won't play nice with dplyr, so we rename them
+    names(fit) <- c("Visible Minority", "intercept", "slope")
+    
+    # In order to make sure that the graph has the same observations in the same
+    # order as our fitted dataset. Without this join they're out of sync and
+    # the regression lines will be scribbled.
+    fitted <- filtered_sp() %>%
+      inner_join(fit, by = "Visible Minority") %>%
+      mutate(predicted = slope * filtered_sp()[[input$inputX]] + intercept)
+    
+    # Create the base graph
+    fig <- plot_ly(fitted, x = ~fitted[[input$inputX]], y = fitted[[input$inputY]], 
+                   type = "scatter", mode = "markers",
+                   text = ~paste('Ethnic origin: ', `Ethnic origin`,
+                                 '<br> Place of birth', `Place of birth`,
+                                 '<br> Sex: ', Sex,
+                                 '<br> Age Group: ', `Age group`,
+                                 '<br> Generation: ', `Generation Status`,
+                                 '<br> Number of People: ', Count),
+                   hovertemplate = paste('<b>%{y.name}</b>: %{y}',
+                                         '<br><b>%{x.name}</b>: %{x}<br>',
+                                         '%{text}'),
+                   color = ~`Visible Minority`,
+                   width = 600,
+                   height = 600) %>%
+      add_trace(x = ~fitted[[input$inputX]], y = ~predicted, mode = "lines") # Add Regression lines
+    
+    # Add title and axes titles
+    fig <- fig %>%
+      layout(title = paste(input$inputX, "by", input$inputY),
+             xaxis = list(title = input$inputX),
+             yaxis = list(title = input$inputY)
+      )
+    
+    fig
   })
   
   # Choropleth
