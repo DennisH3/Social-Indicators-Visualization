@@ -1,0 +1,71 @@
+---
+title: "Dynamic Line Graph"
+output: html_notebook
+---
+
+```{r}
+library(plotly)
+library(tidyverse)
+library(data.table)
+```
+
+```{r}
+# Read the data and select columns to keep
+lData <- select(read.csv("Synth_data_01-16.csv", check.names = FALSE), 
+                c("Year", "Visible minorities", "Sex", "Generation Status", "Age groups", "Average income"))
+
+# Print the data frame
+lData
+```
+
+```{r}
+# Filter the data
+newDT <- filter(lData,
+                Sex == "Female",
+                `Generation Status` == "First generation",
+                `Age groups` == "15-29")
+
+newDT
+```
+
+```{r}
+# Pivot the data
+pDT <- pivot_wider(newDT,
+                   names_from = `Visible minorities`,
+                   values_from = `Average income`)
+
+pDT
+```
+
+```{r}
+# Create data frame of VisMin Groups' Average Income to be plotted
+VM <- select(pDT, c("South Asian", "Chinese", "Black"))
+
+# Create the base graph
+fig <- plot_ly(VM, x = ~Year)
+
+# Add each series one-by-one as new traces
+for (i in 1:length(colnames(VM))) {
+  fig <- fig %>%
+    add_trace(x = pDT$Year, y = VM[[i]], type = "scatter", mode = "lines+markers",
+              name = colnames(VM)[i])
+}
+
+# Note hovermode = "x unified" is not working as it is supposed to
+# Best work-around was used in xaxis with spike layout
+fig <- fig %>% 
+  layout(title = "Average Income for Visible Minority Groups by Census Years", 
+         hovermode = "x unified",
+         xaxis = list(title = "Year",
+                      showspikes = TRUE,
+                      spikecolor = "black",
+                      spikethickness = 2,
+                      spikemode  = 'toaxis+across',
+                      spikesnap = 'data',
+                      showline=TRUE),
+         yaxis = list(title = "Average Income ($)")
+         )
+
+fig
+```
+
