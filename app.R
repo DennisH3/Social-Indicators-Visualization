@@ -615,9 +615,16 @@ server <- function(input, output) {
              `Generation Status` %in% input$gen,
              `Visible minorities` %in% input$VisMi)
     
-    # Calculate sums
-    if (length(input$ag) > 1) {
-      
+    # If any of the inputs have multiple selections, sum Average income
+    if (inputSex > 1 | inputGen > 1 | inputAge > 1) {
+
+      # Group by Year and VisMin, then calculate total average income
+      newDT <- newDT %>%
+        group_by(Year, `Visible minorities`) %>%
+        summarise(`Average income` = sum(`Average income`), .groups = 'drop')
+
+      # Convert to data frame
+      newDT <- as.data.frame(newDT)
     }
     
     # Pivot by VisMin
