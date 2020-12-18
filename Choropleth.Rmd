@@ -4,13 +4,11 @@ output: html_notebook
 ---
 
 ```{r}
-#install.packages("leaflet")
-#install.packages("tigris")
+install.packages("leaflet")
 ```
 
 ```{r}
 library(leaflet)
-library(geojsonio)
 library(rgdal)
 library(tidyverse)
 library(data.table)
@@ -19,8 +17,8 @@ library(htmltools)
 
 ```{r}
 # Read the GeoJson file
-#CMA <- readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
-CMA <- readOGR("CMA_CA_2016_with_Residuals.json")
+CMA <- readOGR("~/social_indicatorsVis/TopoJSON/CMA_CA_2016_with_Residuals.json")
+#CMA <- readOGR("CMA_CA_2016_with_Residuals.json")
 ```
 
 ```{r}
@@ -42,7 +40,7 @@ employGen$Population <- as.integer(employGen$Population)
 # Change Geography to CMANAME to be the key to merge by
 setnames(employGen, colnames(employGen[2]), "CMANAME")
 
-# Remove all rows for Population with 
+# Remove all rows for Population with NA
 employGen <- employGen[complete.cases(employGen),]
 
 # Print updated data frame
@@ -51,6 +49,7 @@ employGen
 # Check the number of and which geographical locations are the same (There are only a total of 30 CITIES that overlap)
 print(intersect(CMA@data$CMANAME, unique(employGen$CMANAME)))
 ```
+
 ```{r}
 # Lines 54-78 were used to test a method from https://stackoverflow.com/questions/38676580/errors-when-merging-spatialpolygonsdataframe-with-dataset
 
@@ -102,7 +101,7 @@ CMA@data
 ```{r}
 # Create the ranges for the bins (8 ranges to fit colour palette)
 # Change bin intervals to make fill more visible
-bins <- c(0, 100000, 200000, 300000, 400000, 500000, 600000, 700000, Inf)
+bins <- c(0, 8000, 16000, 24000, 32000, 40000, 44000, 48000, Inf)
 
 # Colour palette for the intervals
 pal <- colorBin("Purples", domain = CMA$Population, bins = bins, na.color = "#fcfbfd")
