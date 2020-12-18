@@ -2,6 +2,10 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
+# Next steps:
+# Add another choropleth with voter turnout
+# Polish the aesthetics (change checkboxGroups to multi-selective)
+
 # Install packages
 #install.packages("tidyverse")
 #install.packages("plotly")
@@ -414,7 +418,7 @@ ui <- fluidPage(
 
                  helpText("Select the Y variable"),
 
-                 selectizeInput("inputX",
+                 selectizeInput("inputY",
                                 label = "Y Variable",
                                 choices = list("Percentage employed Full-time",
                                                "Mean Income",
@@ -532,13 +536,20 @@ ui <- fluidPage(
     tabPanel(
       "Debug", fluid = TRUE,
       h1("Filtered Data Tables"),
+      br(),
+      h2("Data frame for bar graph 1"),
+      dataTableOutput("sDF"), # data frame for vismin*sex
+      h2("Filtered data for bar graph 2"),
       dataTableOutput("df"), # filter_data()
+      h2("Data frame for bar graph 2"),
       dataTableOutput("df2"), # data frame for ec()
-      dataTableOutput("df3"), # filter_data2()
+      h2("Filtered data for bar graph 3"),
+      dataTableOutput("df3"), # filter_data2(),
+      h2("Data frame for bar graph 3"),
       dataTableOutput("df4"), # data frame for ec2()
       #dataTableOutput("DI"), # data frame for degIncome
-      dataTableOutput("EmI"),
-      dataTableOutput("sDF") # data frame for vismin*sex
+      h2("Data frame for Employment Income Scatter plot"),
+      dataTableOutput("EmI") # data frame for employment income
     )
   )
 )
@@ -722,7 +733,7 @@ server <- function(input, output) {
              `Visible minorities` %in% input$VisMi)
     
     # If any of the inputs have multiple selections, sum Average income
-    if (inputSex > 1 | inputGen > 1 | inputAge > 1) {
+    if (input$Sex > 1 | input$gen > 1 | input$ag > 1) {
 
       # Group by Year and VisMin, then calculate total average income
       newDT <- newDT %>%
@@ -1020,17 +1031,17 @@ server <- function(input, output) {
     # Create the base graph
     fig <- plot_ly(fitted, x = ~fitted[[input$inputX]], y = fitted[[input$inputY]], 
                    type = "scatter", mode = "markers",
-                   text = ~paste('Ethnic origin: ', `Ethnic origin`,
+                   text = ~paste('<b>',paste(inputX, ':', sep = ""), '</b>', fitted[[inputX]],
+                                 '<br><b>',paste(inputY, ':', sep = ""), '</b>', fitted[[inputY]],
+                                 '<br> Ethnic origin: ', `Ethnic origin`,
                                  '<br> Place of birth', `Place of birth`,
                                  '<br> Sex: ', Sex,
                                  '<br> Age Group: ', `Age group`,
                                  '<br> Generation: ', `Generation Status`,
                                  '<br> Number of People: ', Count),
-                   hovertemplate = paste('<b>%{y.name}</b>: %{y}',
-                                         '<br><b>%{x.name}</b>: %{x}<br>',
-                                         '%{text}'),
+                   hovertemplate = paste('%{text}'),
                    color = ~`Visible Minority`,
-                   width = 600,
+                   width = 1000,
                    height = 600) %>%
       add_trace(x = ~fitted[[input$inputX]], y = ~predicted, mode = "lines") # Add Regression lines
     
