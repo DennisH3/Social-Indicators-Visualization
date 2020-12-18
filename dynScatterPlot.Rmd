@@ -23,7 +23,7 @@ spData
 
 ```{r}
 # Define the inputs
-inputVM <- c("Japanese", "Chinese", "Korean")
+inputVM <- c("Chinese", "Korean", "Japanese")
 inputSex <- c("Female", "Male")
 inputGen <- c("First generation", "Second generation")
 inputAge <- c("15-29", "30-44")
@@ -56,7 +56,7 @@ newDT
 # Linear regression
 fit <- newDT %>%
   group_by(`Visible Minority`) %>%
-  do(lm(newDT[[inputY]] ~ newDT[[inputX]], data = .) %>%
+  do(lm(.[[inputY]] ~ .[[inputX]], data = .) %>%
        coef() %>%
        bind_rows()) %>%
   ungroup()
@@ -75,15 +75,15 @@ fitted <- newDT %>%
 ```{r}
 # Create the base graph
 fig <- plot_ly(fitted, x = ~fitted[[inputX]], y = fitted[[inputY]], type = "scatter", mode = "markers",
-              text = ~paste('Ethnic origin: ', `Ethnic origin`,
+              text = ~paste('<b>',paste(inputX, ':', sep = ""), '</b>', fitted[[inputX]],
+                            '<br><b>',paste(inputY, ':', sep = ""), '</b>', fitted[[inputY]],
+                            '<br> Ethnic origin: ', `Ethnic origin`,
                             '<br> Place of birth', `Place of birth`,
                             '<br> Sex: ', Sex,
                             '<br> Age Group: ', `Age group`,
                             '<br> Generation: ', `Generation Status`,
                             '<br> Number of People: ', Count),
-              hovertemplate = paste('<b>%{y.name}</b>: %{y}',
-                                    '<br><b>%{x.name}</b>: %{x}<br>',
-                                    '%{text}'),
+              hovertemplate = paste('%{text}'),
               color = ~`Visible Minority`,
               width = 600,
               height = 600) %>%

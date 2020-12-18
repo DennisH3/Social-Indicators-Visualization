@@ -194,22 +194,22 @@ ui <- fluidPage(
                  
                  checkboxGroupInput("VM2", 
                                     label = "Visible Minority for Generation Status",
-                                    choices = list("Total Visible Minority 2",
-                                                   "Total visible minority population 2",
-                                                   "South Asian 2",
+                                    choices = list("Total Visible Minority",
+                                                   "Total visible minority population",
+                                                   "South Asian",
                                                    "Chinese",
                                                    "Black",
                                                    "Filipino",
                                                    "Latin American",
                                                    "Arab",
-                                                   "Southeast Asian 2",
-                                                   "West Asian 2",
+                                                   "Southeast Asian",
+                                                   "West Asian",
                                                    "Korean",
                                                    "Japanese",
-                                                   "Visible minority, n.i.e. 2",
-                                                   "Multiple visible minorities 2",
-                                                   "Not a visible minority 2"),
-                                    selected = "Total Visible Minority 2"
+                                                   "Visible minority, n.i.e.",
+                                                   "Multiple visible minorities",
+                                                   "Not a visible minority"),
+                                    selected = "Total Visible Minority"
                  ),
                  
                  h4("Sub-populations"),
@@ -315,7 +315,7 @@ ui <- fluidPage(
                  helpText("This is for the scatter plot"),
                  
                  checkboxGroupInput("VisM", 
-                                    label = "Visible Minority",
+                                    label = "Visible Minority for Scatter plot",
                                     choices = unique(synData$`Visible Minority`),
                                     selected = "South Asian"
                  ),
@@ -323,7 +323,7 @@ ui <- fluidPage(
                  helpText("This is for the line graph"),
                  
                  checkboxGroupInput("VisMi", 
-                                    label = "Visible Minority",
+                                    label = "Visible Minority for Line Graph",
                                     choices = unique(lineData$`Visible minorities`),
                                     selected = "South Asian"
                  ),
@@ -358,9 +358,10 @@ ui <- fluidPage(
                   Then select from either the Visible Minorities. This will produce a scatter plot"),
                plotlyOutput("splot", inline = TRUE, width = 1000, height = 600),
                br(),
-               p("Note: Some combinations of filters will result in an error because that record does not exist in the data."),
+               p("Note: Some combinations of filters will result in an error because that record does not exist in the data.
+                 </br> The relationship for the trend lines is how percentage employed affects mean income"),
                br(),
-               plotlyOutput("lgraph", width = 1000, height = 600)
+               plotlyOutput("lgraph", inline = TRUE, width = 1000, height = 600)
              )
          )
     ),
@@ -549,7 +550,9 @@ ui <- fluidPage(
       dataTableOutput("df4"), # data frame for ec2()
       #dataTableOutput("DI"), # data frame for degIncome
       h2("Data frame for Employment Income Scatter plot"),
-      dataTableOutput("EmI") # data frame for employment income
+      dataTableOutput("EmI"), # data frame for employment income
+      h2("Data frame for dynamic scatter plot"),
+      dataTableOutput("spDF")
     )
   )
 )
@@ -802,6 +805,8 @@ server <- function(input, output) {
   
   output$sDF <- renderDataTable({filtered_sex()})
   
+  output$spDF <- renderDataTable({filtered_sp()})
+  
   output$sBar <- renderPlotly({
     req(filtered_sex())
     
@@ -979,7 +984,7 @@ server <- function(input, output) {
     lp <- plot_ly(data = filtered_lineData(), x = ~Year)
     
     # Add each series one-by-one as new traces
-    for (i in 5:length(colnames(filtered_lineData()))) {
+    for (i in 2:length(colnames(filtered_lineData()))) {
       lp <- lp %>%
         add_trace(x = filtered_lineData()$Year, y = filtered_lineData()[[i]], 
                   type = "scatter", mode = "lines+markers",
@@ -1013,7 +1018,7 @@ server <- function(input, output) {
     # Linear regression
     fit <- filtered_sp() %>%
       group_by(`Visible Minority`) %>%
-      do(lm(filtered_sp()[[input$inputY]] ~ filtered_sp()[[input$inputX]], data = .) %>%
+      do(lm(.[[input$inputY]] ~ .[[input$inputX]], data = .) %>%
            coef() %>%
            bind_rows()) %>%
       ungroup()
@@ -1031,8 +1036,8 @@ server <- function(input, output) {
     # Create the base graph
     fig <- plot_ly(fitted, x = ~fitted[[input$inputX]], y = fitted[[input$inputY]], 
                    type = "scatter", mode = "markers",
-                   text = ~paste('<b>',paste(inputX, ':', sep = ""), '</b>', fitted[[inputX]],
-                                 '<br><b>',paste(inputY, ':', sep = ""), '</b>', fitted[[inputY]],
+                   text = ~paste('<b>',paste(input$inputX, ':', sep = ""), '</b>', fitted[[input$inputX]],
+                                 '<br><b>',paste(input$inputY, ':', sep = ""), '</b>', fitted[[input$inputY]],
                                  '<br> Ethnic origin: ', `Ethnic origin`,
                                  '<br> Place of birth', `Place of birth`,
                                  '<br> Sex: ', Sex,
