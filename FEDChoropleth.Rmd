@@ -1,0 +1,150 @@
+---
+title: "Choropleth"
+output: html_notebook
+---
+
+```{r}
+#install.packages("leaflet")
+```
+
+```{r}
+library(tidyverse)
+library(data.table)
+library(readxl)
+library(leaflet)
+library(rgdal)
+library(htmltools)
+```
+
+```{r}
+# Read the GeoJson file
+CAN <- readOGR("gfedTopo.json")
+
+# Keep only FEDENAME as keys to merge by
+CAN@data <- select(CAN@data, "FEDENAME")
+
+# Rename it to match with VoterTurnout
+names(CAN@data) <- "Electoral District Name"
+
+CAN@data
+```
+
+```{r}
+# Read xlsx file
+# Read the sheets separately and remove unnecessary columns
+voterTurnout <- select(as.data.frame(read_excel("FED- vismin, income and voting data.xlsx", sheet = 1)),
+                       -"Electoral District Number")
+income <- select(as.data.frame(read_excel("FED- vismin, income and voting data.xlsx", sheet = 2)),
+                 -"Geo_Code")
+vismin <- select(as.data.frame(read_excel("FED- vismin, income and voting data.xlsx", sheet = 4)),
+                 -"Geo_Code")
+
+# Change names to match with voterTurnout
+names(income) <- c("Province", "Electoral District Name", "Average after-tax household income ($)")
+names(vismin) <- c("Province", "Electoral District Name", "Visible Minority Groups",
+                   "Total", "Male", "Female", "Percentage Female", "Percentage Male")
+
+# Print
+voterTurnout
+income
+vismin
+```
+
+```{r}
+# Calculate average for income
+income <- income %>%
+  group_by(Province, `Electoral District Name`) %>%
+  summarise(`Average after-tax household income ($)` = mean(`Average after-tax household income ($)`),
+            .groups = 'drop')
+
+# Print
+income
+```
+
+```{r}
+# The user can only filter by VisMin
+filtered_VM <- filter(vismin, `Visible Minority Groups` == "West Asian")
+
+# Print the filtered data frame
+filtered_VM
+```
+
+```{r}
+# Because all the data has exactly the same number of rows, can do all inner_joins
+# Merge the data and select the columns to keep
+CAN@data <- CAN@data %>%
+  inner_join(voterTurnout) %>%
+  inner_join(income) %>%
+  inner_join(filtered_VM)
+
+# Display to confirm
+CAN@data
+```
+
+```{r}
+# User can choose what to fill the choropleth by
+# The choices are: Population, Electors, Polling Stations, Valid Ballots, Rejected Ballots, Total Ballots Cast, Average after-tax household income ($), Total, Male, Female
+
+choice = "Population"
+```
+
+
+```{r}
+
+
+bins
+```
+
+```{r}
+# Create the ranges for the bins (8 ranges to fit colour palette)
+# Find the max value in the selected column and divide by 8 
+interval <- max(CAN@data[[choice]])/8
+
+# Count the number of significant digits
+# Subtract one and make it negative (since R counts 1's digit at 0)
+sd <- (ceiling(log10(interval))-1)*-1
+
+# Create the bins
+bins <- c(round(interval, sd) * 0:7, Inf)
+
+# Colour palette for the intervals
+pal <- colorBin("Blues", domain = CAN$Population, bins = bins)
+
+hoverText <- sprintf(
+  "<strong>Visible Minority: %s</strong>
+  <br>Geography: <em>%s</em>
+  <br>Number of People: <em>%d</em>
+  <br>Age: %s
+  <br>Sex: %s 
+  <br>Total income groups: %s 
+  <br>Generation Status: %s", 
+  CAN@data$`Visible minority`, CAN@data$CANNAME, CAN@data$Population, CAN@data$Age,
+  CAN@data$Sex, CAN@data$`Total income groups`, CAN@data$`Generation Status`
+) %>% lapply(htmltools::HTML)
+
+# Need to change the print for when the value is 0 in Population, print NA
+
+# Create the choropleth
+leaflet(CAN) %>%
+  setView(-106.3, 56.1, zoom = 5) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~pal(Population),
+    weight = 2,
+    opacity = 1,
+    fillOpacity = 0.7,
+    highlight = highlightOptions(
+      weight = 5,
+      color = "#666",
+      fillOpacity = 0.7,
+      bringToFront = TRUE
+    ),
+    label = hoverText,
+    labelOptions = labelOptions(
+      style = list("font-weight" = "normal", padding = "3px 8px"),
+      textsize = "15px",
+      direction = "auto"
+    )
+  ) %>%
+  addLegend(pal = pal, values = ~Population, opacity = 0.7, title = "Number of People", position = "topright")
+```

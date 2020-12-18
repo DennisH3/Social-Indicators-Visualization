@@ -4,7 +4,7 @@
 
 # Next steps:
 # Add another choropleth with voter turnout
-# Polish the aesthetics (change checkboxGroups to multi-selective)
+# Polish the aesthetics (change checkboxGroups to multi-selective), recreate the last 2 bar graphs
 
 # Install packages
 #install.packages("tidyverse")
@@ -27,7 +27,7 @@ library(htmltools)
 # Save 302.563824 MB
 # The datatable with the columns of interest (Year, Geography, and the DIM columns)
 
-# Should use merge(select(read.csv(file1)), select(read.csv(file2)), all = TRUE) instead. Have to rename columns too before merge.
+# Should use merge(names(select(read.csv(file1))) <- c(list of new colnames), names(select(read.csv(file2))) <- c(list of colnames), all = TRUE) instead.
 # This way, will have only one column for visible minority
 
 ogDT <- select(merge(read.csv("98-400-X2016274_English_CSV_data.csv"), 
@@ -104,7 +104,7 @@ my_colors <- colorRampPalette(brewer.pal(15, 'Dark2'))(15)
 
 # Define UI ----
 ui <- fluidPage(
-  titlePanel("Ethnocultural Groups Visualizations, 2016"),
+  titlePanel("Social Inclusion Data Visualization Tool"),
   tabsetPanel(
     
     # Bar Graphs Tab
