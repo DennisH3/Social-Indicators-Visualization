@@ -3,7 +3,6 @@
 # Date: 11/02/2020
 
 # Next steps:
-# Add another choropleth with voter turnout
 # Polish the aesthetics (change checkboxGroups to multi-selective), recreate the last 2 bar graphs
 
 # Install packages
@@ -135,6 +134,7 @@ income <- income %>%
 # Set color ramp 
 my_colors <- colorRampPalette(brewer.pal(15, 'Dark2'))(15)
 
+# To create a hierarchy of buttons, use conditional panels
 # Define UI ----
 ui <- fluidPage(
   titlePanel("Social Inclusion Data Visualization Tool"),
@@ -227,22 +227,22 @@ ui <- fluidPage(
                  
                  checkboxGroupInput("VM2", 
                                     label = "Visible Minority for Generation Status",
-                                    choices = list("Total Visible Minority",
-                                                   "Total visible minority population",
-                                                   "South Asian",
+                                    choices = list("Total Visible Minority 2",
+                                                   "Total visible minority population 2",
+                                                   "South Asian 2",
                                                    "Chinese",
                                                    "Black",
                                                    "Filipino",
                                                    "Latin American",
                                                    "Arab",
-                                                   "Southeast Asian",
-                                                   "West Asian",
+                                                   "Southeast Asian 2",
+                                                   "West Asian 2",
                                                    "Korean",
                                                    "Japanese",
-                                                   "Visible minority, n.i.e.",
-                                                   "Multiple visible minorities",
-                                                   "Not a visible minority"),
-                                    selected = "Total Visible Minority"
+                                                   "Visible minority, n.i.e. 2",
+                                                   "Multiple visible minorities 2",
+                                                   "Not a visible minority 2"),
+                                    selected = "Total Visible Minority 2"
                  ),
                  
                  h4("Sub-populations"),
@@ -601,7 +601,7 @@ ui <- fluidPage(
                ),
                
                mainPanel(
-                 h1("Federal Voter Turnout by Visibile Minority, 2011"),
+                 h1("Select indicators by Federal Electoral Districts and visible minority groups"),
                  leafletOutput("fed", width = 1000, height = 600)
                  )
              )
@@ -616,12 +616,12 @@ ui <- fluidPage(
       dataTableOutput("sDF"), # data frame for vismin*sex
       h2("Filtered data for bar graph 2"),
       dataTableOutput("df"), # filter_data()
-      h2("Data frame for bar graph 2"),
-      dataTableOutput("df2"), # data frame for ec()
+      #h2("Data frame for bar graph 2"),
+      #dataTableOutput("df2"), # data frame for ec()
       h2("Filtered data for bar graph 3"),
       dataTableOutput("df3"), # filter_data2(),
-      h2("Data frame for bar graph 3"),
-      dataTableOutput("df4"), # data frame for ec2()
+      #h2("Data frame for bar graph 3"),
+      #dataTableOutput("df4"), # data frame for ec2()
       #dataTableOutput("DI"), # data frame for degIncome
       h2("Data frame for Employment Income Scatter plot"),
       dataTableOutput("EmI"), # data frame for employment income
@@ -635,124 +635,6 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   # Reactive values ----------------------------------------------------------
-
-  # This reactive will filter ogDT by inputs for Sex
-  filtered_data <- reactive(
-    {
-      # Require geography, degree, field of study, age, and sex inputs
-      req(input$geo, input$deg, input$fos, input$age, input$sex)
-      
-      # Filter values
-      newDT <- ogDT
-      
-      newDT <- filter(newDT, Geography == input$geo)
-      newDT <- filter(newDT, Education == input$deg)
-      newDT <- filter(newDT, `Field of Study` == input$fos)
-      newDT <- filter(newDT, Age == input$age)
-      newDT <- filter(newDT, Sex == input$sex)
-      
-      # Remove rows where column 13 (Immigrant Status is NA)
-      newDT <- newDT[complete.cases(newDT[ , 13]),]
-      
-      return(newDT)
-  })
-  
-  # Select Ethnocultural groups for the first bar plot
-  ec <- reactive ({
-    
-    # Require the filtered table and the Visible Minority input
-    req(filtered_data(), input$VM)
-  
-    # From the filtered data select columns based on Visible Minority 2 Widget
-    df <- filtered_data() %>%
-      select(input$VM)
-    
-    # Transpose the data
-    dft <- as.data.frame(t(as.matrix(df)))
-    
-    # Change row names and column names
-    rownames(dft) <- colnames(df)
-    colnames(dft) <- filtered_data()[,13]
-    
-    # Make the row name into a column
-    dft <- cbind(rownames(dft), data.frame(dft, row.names=NULL))
-    
-    # Name the first column
-    colnames(dft)[1] <- "Visible Minority Group"
-    
-    return(dft)
-  })
-  
-  # This reactive will filter ogDT by inputs for Generation Status
-  filtered_data2 <- reactive(
-    {
-      # Require Geography, degree, age, and sex inputs
-      req(input$geo, input$deg, input$age, input$sex)
-      
-      # Filter values
-      newDT <- ogDT
-      
-      newDT <- filter(newDT, Geography == input$geo)
-      newDT <- filter(newDT, Education == input$deg)
-      newDT <- filter(newDT, Age == input$age)
-      newDT <- filter(newDT, Sex == input$sex)
-      
-      # Remove rows where column 23 (Generation Status is NA)
-      newDT <- newDT[complete.cases(newDT[ , 23]),]
-      
-      return(newDT)
-    }
-  )
-  
-  # Select Ethnocultural groups for the first bar plot
-  ec2 <- reactive (
-    {
-      
-      # Require the filtered table and the Visible Minority input
-      req(filtered_data2(), input$VM2)
-      
-      # From the filtered data select columns based on Visible Minority 2 Widget
-      df <- filtered_data2() %>%
-        select(input$VM2)
-
-      # Transpose the data
-      dft <- as.data.frame(t(as.matrix(df)))
-      
-      # Change row names and column names
-      rownames(dft) <- colnames(df)
-      colnames(dft) <- filtered_data2()[,23]
-      
-      # Make the row name into a column
-      dft <- cbind(rownames(dft), data.frame(dft, row.names=NULL))
-      
-      # Name the first column
-      colnames(dft)[1] <- "Visible Minority Group 2"
-      
-      return(dft)
-    }
-  )
-  
-  # This reactive will filter degInc
-  # filtered_degInc <- reactive(
-  #   {
-  #     # Require Geography, sex, gen, and VisM inputs
-  #     req(input$g, input$Sex, input$gen, input$VisM)
-  #     
-  #     # Note that degree and Income are static
-  #     
-  #     # Filter values
-  #     newDT <- degInc
-  #     
-  #     newDT <- filter(newDT, Geography == input$g)
-  #     #newDT <- filter(newDT, Age == input$ag)
-  #     newDT <- filter(newDT, Sex == input$Sex)
-  #     newDT <- filter(newDT, `Generation Status` == input$gen)
-  #     newDT <- newDT %>% filter(`Visible Minority` %in% input$VisM)
-  #     
-  #     return(newDT)
-  #   }
-  # )
-  
   # This reactive filters for sex to build the first column graph on the first tab
   filtered_sex <- reactive({
     # Require geography, degree, field of study, and age inputs
@@ -779,6 +661,143 @@ server <- function(input, output) {
     
     return(newDT)
   })
+  
+  # This reactive will filter ogDT by inputs for Immigrant Status
+  filtered_data <- reactive(
+    {
+      # Require geography, degree, field of study, age, and sex inputs
+      req(input$geo, input$deg, input$fos, input$age, input$sex)
+      
+      # Filter values
+      newDT <- ogDT
+
+      newDT <- filter(newDT, Geography == input$geo)
+      newDT <- filter(newDT, Education == input$deg)
+      newDT <- filter(newDT, `Field of Study` == input$fos)
+      newDT <- filter(newDT, Age == input$age)
+      newDT <- filter(newDT, Sex == input$sex)
+       
+      # # Remove rows where column 13 (Generation Status is NA)
+      # newDT <- newDT[complete.cases(newDT[ , 13]),]
+      
+      # Transform the data
+      newDT <- ogDT %>%
+        select("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
+               "Total Visible Minority", "Total visible minority population", "South Asian", 
+               "Southeast Asian", "West Asian", "Visible minority, n.i.e.", "Multiple visible minorities", 
+               "Not a visible minority", "Immigrant Status") %>%
+        pivot_longer(c(1:15), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
+        pivot_wider(names_from = `Immigrant Status`, values_from = "Number of People", values_fn = sum) %>%
+        filter(`Visible Minority Groups` %in% input$VM) 
+      
+      return(newDT)
+  })
+  
+  # Select Ethnocultural groups for the first bar plot
+  # ec <- reactive ({
+  #   
+  #   # Require the filtered table and the Visible Minority input
+  #   req(filtered_data(), input$VM)
+  # 
+  #   # From the filtered data select columns based on Visible Minority 2 Widget
+  #   df <- filtered_data() %>%
+  #     select(input$VM)
+  #   
+  #   # Transpose the data
+  #   dft <- as.data.frame(t(as.matrix(df)))
+  #   
+  #   # Change row names and column names
+  #   rownames(dft) <- colnames(df)
+  #   colnames(dft) <- filtered_data()[,13]
+  #   
+  #   # Make the row name into a column
+  #   dft <- cbind(rownames(dft), data.frame(dft, row.names=NULL))
+  #   
+  #   # Name the first column
+  #   colnames(dft)[1] <- "Visible Minority Group"
+  #   
+  #   return(dft)
+  # })
+  
+  # This reactive will filter ogDT by inputs for Generation Status
+  filtered_data2 <- reactive(
+    {
+      # Require Geography, degree, age, and sex inputs
+      req(input$geo, input$deg, input$age, input$sex)
+      
+      # Filter values
+      newDT <- ogDT
+      
+      newDT <- filter(newDT, Geography == input$geo)
+      newDT <- filter(newDT, Education == input$deg)
+      newDT <- filter(newDT, Age == input$age)
+      newDT <- filter(newDT, Sex == input$sex)
+      
+      # Remove rows where column 23 (Generation Status is NA)
+      newDT <- newDT[complete.cases(newDT[ , 23]),]
+      
+      # Transform the data
+      newDT <- ogDT %>%
+        select("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
+               "Total Visible Minority 2", "Total visible minority population 2", "South Asian 2", 
+               "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
+               "Multiple visible minorities 2", "Not a visible minority 2", "Generation Status") %>%
+        pivot_longer(c(1:15), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
+        pivot_wider(names_from = `Generation Status`, values_from = "Number of People", values_fn = sum) %>%
+        filter(`Visible Minority Groups` %in% input$VM)
+      
+      return(newDT)
+    }
+  )
+  
+  # Select Ethnocultural groups for the first bar plot
+  # ec2 <- reactive (
+  #   {
+  #     
+  #     # Require the filtered table and the Visible Minority input
+  #     req(filtered_data2(), input$VM2)
+  #     
+  #     # From the filtered data select columns based on Visible Minority 2 Widget
+  #     df <- filtered_data2() %>%
+  #       select(input$VM2)
+  # 
+  #     # Transpose the data
+  #     dft <- as.data.frame(t(as.matrix(df)))
+  #     
+  #     # Change row names and column names
+  #     rownames(dft) <- colnames(df)
+  #     colnames(dft) <- filtered_data2()[,23]
+  #     
+  #     # Make the row name into a column
+  #     dft <- cbind(rownames(dft), data.frame(dft, row.names=NULL))
+  #     
+  #     # Name the first column
+  #     colnames(dft)[1] <- "Visible Minority Group 2"
+  #     
+  #     return(dft)
+  #   }
+  # )
+  
+  # This reactive will filter degInc
+  # filtered_degInc <- reactive(
+  #   {
+  #     # Require Geography, sex, gen, and VisM inputs
+  #     req(input$g, input$Sex, input$gen, input$VisM)
+  #     
+  #     # Note that degree and Income are static
+  #     
+  #     # Filter values
+  #     newDT <- degInc
+  #     
+  #     newDT <- filter(newDT, Geography == input$g)
+  #     #newDT <- filter(newDT, Age == input$ag)
+  #     newDT <- filter(newDT, Sex == input$Sex)
+  #     newDT <- filter(newDT, `Generation Status` == input$gen)
+  #     newDT <- newDT %>% filter(`Visible Minority` %in% input$VisM)
+  #     
+  #     return(newDT)
+  #   }
+  # )
   
   # This reactive filters the synthetic data for the scatter plot
   filtered_synData <- reactive({
@@ -878,11 +897,11 @@ server <- function(input, output) {
   # Output ---------------------------------------------------
   output$df <- renderDataTable({filtered_data()})
   
-  output$df2 <- renderDataTable({ec()})
+  #output$df2 <- renderDataTable({ec()})
   
   output$df3 <- renderDataTable({filtered_data2()})
   
-  output$df4 <- renderDataTable({ec2()})
+  #output$df4 <- renderDataTable({ec2()})
   
   #output$DI <- renderDataTable({filtered_degInc()})
   
@@ -907,41 +926,59 @@ server <- function(input, output) {
   
   output$ecplot <- renderPlotly({
     
-    # Require the ethnocultural data frame
-    req(ec())
+    # Require the first filtered ogDT data frame
+    req(filtered_data())
   
-    df <- melt(data.table(ec()), id.vars = 'Visible Minority Group')
+    # df <- melt(data.table(ec()), id.vars = 'Visible Minority Group')
+    # 
+    # # Plot the column graph
+    # ecp <- ggplot(df, aes(x = `Visible Minority Group`, y = value, fill = variable)) +
+    #  geom_col(position = "dodge") + 
+    #   scale_y_continuous(labels = scales::number) +
+    #  labs(title = "Immigrant Status Indicator",
+    #       x = "Visible Minority Group",
+    #       y = "Number of People",
+    #       fill = "Immigrant Status")
+    # 
+    # ggplotly(ecp)
     
-    # Plot the column graph
-    ecp <- ggplot(df, aes(x = `Visible Minority Group`, y = value, fill = variable)) +
-     geom_col(position = "dodge") + 
-      scale_y_continuous(labels = scales::number) +
-     labs(title = "Immigrant Status Indicator",
-          x = "Visible Minority Group",
-          y = "Number of People",
-          fill = "Immigrant Status")
+    fig <- plot_ly(filtered_data(), x = ~`Visible Minority Groups`, y = ~Immigrants, type = 'bar', name = "Immigrants") %>%
+      add_trace(y = ~`Non-permanent residents`, name = "Non-permanent residents") %>%
+      add_trace(y = ~`Non-immigrants`, name = "Non-immigrants") %>%
+      add_trace(y = ~`Total - Immigrant status`, name = "Total - Immigrant status") %>%
+      layout(title = "Population of Visible Minority Groups by Education, Field of Study and Immigrant Status, 2016", 
+             yaxis = list(title = 'Number of People'), barmode = 'group')
     
-    ggplotly(ecp)
-    
+    fig
    })
   
   output$ecplot2 <- renderPlotly({
     
-    # Require the ethnocultural data frame
-    req(ec2())
+    # Require the second filtered data frame
+    req(filtered_data2())
     
-    df <- melt(data.table(ec2()), id.vars = 'Visible Minority Group 2')
+    # df <- melt(data.table(ec2()), id.vars = 'Visible Minority Group 2')
+    # 
+    # # Plot the column graph
+    # ecp2 <- ggplot(df, aes(x = `Visible Minority Group 2`, y = value, fill = variable)) +
+    #   geom_col(position = "dodge") + 
+    #   scale_y_continuous(labels = scales::number) +
+    #   labs(title = "Generation Status Indicator",
+    #        x = "Visible Minority Group 2",
+    #        y = "Number of People",
+    #        fill = "Generation Status")
+    # 
+    # ggplotly(ecp2)
     
-    # Plot the column graph
-    ecp2 <- ggplot(df, aes(x = `Visible Minority Group 2`, y = value, fill = variable)) +
-      geom_col(position = "dodge") + 
-      scale_y_continuous(labels = scales::number) +
-      labs(title = "Generation Status Indicator",
-           x = "Visible Minority Group 2",
-           y = "Number of People",
-           fill = "Generation Status")
+    fig <- plot_ly(filtered_data2(), x = ~`Visible Minority Groups`, y = ~`Third generation or more`, 
+                   type = 'bar', name = "Third generation or more") %>%
+      add_trace(y = ~`Second generation`, name = "Second generation") %>%
+      add_trace(y = ~`First generation`, name = "First generation") %>%
+      add_trace(y = ~`Total - Generation status`, name = "Total - Generation status") %>%
+      layout(title = "Population of Visible Minority Groups by Education, Field of Study and Immigrant Status, 2016", 
+             yaxis = list(title = 'Number of People'), barmode = 'group')
     
-    ggplotly(ecp2)
+    fig
     
   })
   
@@ -1231,6 +1268,8 @@ server <- function(input, output) {
     pal <- colorBin("Blues", domain = CAN@data[[input$fillBy]], bins = bins)
     
     # Customize the hovertext over the map
+    # Use a nested-if statement or switch-case statement 
+    # to customize the hovertext to only show input$fillBy indicators
     hoverText <- sprintf(
        "<strong>Visible Minority: %s</strong>
         <br>Province: <em>%s</em>
