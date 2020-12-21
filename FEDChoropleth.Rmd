@@ -70,12 +70,10 @@ filtered_VM
 ```
 
 ```{r}
-# Because all the data has exactly the same number of rows, can do all inner_joins
-# Merge the data and select the columns to keep
-CAN@data <- CAN@data %>%
-  inner_join(voterTurnout) %>%
-  inner_join(income) %>%
-  inner_join(filtered_VM)
+# Merge the data
+CAN@data <- left_join(CAN@data, voterTurnout)
+CAN@data <- left_join(CAN@data, income)
+CAN@data <- left_join(CAN@data, filtered_VM)
 
 # Display to confirm
 CAN@data
@@ -83,16 +81,10 @@ CAN@data
 
 ```{r}
 # User can choose what to fill the choropleth by
-# The choices are: Population, Electors, Polling Stations, Valid Ballots, Rejected Ballots, Total Ballots Cast, Average after-tax household income ($), Total, Male, Female
+# The choices are: Population, Electors, Polling Stations, Valid Ballots, Rejected Ballots, Total Ballots
+# Cast, Average after-tax household income ($), Total, Male, Female
 
-choice = "Population"
-```
-
-
-```{r}
-
-
-bins
+choice="Population"
 ```
 
 ```{r}
@@ -108,28 +100,41 @@ sd <- (ceiling(log10(interval))-1)*-1
 bins <- c(round(interval, sd) * 0:7, Inf)
 
 # Colour palette for the intervals
-pal <- colorBin("Blues", domain = CAN$Population, bins = bins)
+pal <- colorBin("Blues", domain = CAN@data[[choice]], bins = bins)
 
 hoverText <- sprintf(
   "<strong>Visible Minority: %s</strong>
-  <br>Geography: <em>%s</em>
-  <br>Number of People: <em>%d</em>
-  <br>Age: %s
-  <br>Sex: %s 
-  <br>Total income groups: %s 
-  <br>Generation Status: %s", 
-  CAN@data$`Visible minority`, CAN@data$CANNAME, CAN@data$Population, CAN@data$Age,
-  CAN@data$Sex, CAN@data$`Total income groups`, CAN@data$`Generation Status`
+  <br>Province: <em>%s</em>
+  <br>Electoral District Name: <em>%s</em>
+  <br>Population: %d
+  <br>Electors: %d
+  <br>Polling Stations: %d
+  <br>Valid Ballots: %d
+  <br>Valid Ballots %%: %f
+  <br>Rejected Ballots: %d
+  <br>Rejected Ballots %%: %f
+  <br>Total Ballots Cast: %d
+  <br>Voter Turnout %%: %f
+  <br>Average after-tax household income ($): %f
+  <br>Total: %d
+  <br>Male: %d
+  <br>Female: %d
+  <br>Percentage Male: %f
+  <br>Percentage Female: %f", 
+  CAN@data$`Visible Minority Groups`, CAN@data$Province, CAN@data$`Electoral District Name`,
+  CAN@data$Population, CAN@data$Electors, CAN@data$`Polling Stations`, CAN@data$`Valid Ballots`,
+  CAN@data$`Valid Ballots %`, CAN@data$`Rejected Ballots`, CAN@data$`Rejected Ballots %`,
+  CAN@data$`Total Ballots Cast`, CAN@data$`Voter Turnout %`, 
+  CAN@data$`Average after-tax household income ($)`, CAN@data$Total, CAN@data$Male,
+  CAN@data$Female, CAN@data$`Percentage Male`, CAN@data$`Percentage Female`
 ) %>% lapply(htmltools::HTML)
-
-# Need to change the print for when the value is 0 in Population, print NA
 
 # Create the choropleth
 leaflet(CAN) %>%
-  setView(-106.3, 56.1, zoom = 5) %>%
+  setView(-106.3, 56.1, zoom = 2.5) %>%
   addTiles() %>%
   addPolygons(
-    fillColor = ~pal(Population),
+    fillColor = ~pal(CAN@data[[choice]]),
     weight = 2,
     opacity = 1,
     fillOpacity = 0.7,
@@ -142,9 +147,9 @@ leaflet(CAN) %>%
     label = hoverText,
     labelOptions = labelOptions(
       style = list("font-weight" = "normal", padding = "3px 8px"),
-      textsize = "15px",
+      textsize = "12px",
       direction = "auto"
     )
   ) %>%
-  addLegend(pal = pal, values = ~Population, opacity = 0.7, title = "Number of People", position = "topright")
+  addLegend(pal = pal, values = ~CAN@data[[choice]], opacity = 0.7, title = choice, position = "topright")
 ```

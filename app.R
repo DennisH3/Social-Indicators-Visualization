@@ -7,7 +7,6 @@
 # Polish the aesthetics (change checkboxGroups to multi-selective), recreate the last 2 bar graphs
 
 # Install packages
-#install.packages("tidyverse")
 #install.packages("plotly")
 #install.packages("leaflet")
 #Need to conda install r-rgdal
@@ -16,11 +15,12 @@
 library(shiny)
 library(tidyverse)
 library(data.table)
+library(readxl)
 library(plotly)
-library(RColorBrewer)
 library(leaflet)
 library(rgdal)
 library(htmltools)
+library(RColorBrewer)
 
 # Original combined file size was 847.158 MB (274) and 17.062 MB (275)
 # Reduced size = 561.656176 MB
@@ -98,6 +98,39 @@ setnames(employGen, colnames(employGen[2]), "CMANAME")
 
 # Remove all rows for Population with NA
 employGen <- employGen[complete.cases(employGen),]
+
+# Read the GeoJson file and keep only FEDENAME as key to merge by
+CAN <- readOGR("gfedTopo.json")
+
+# Keep only FEDENAME as keys to merge by
+CAN@data <- select(CAN@data, "FEDENAME")
+
+# Rename it to match with VoterTurnout
+names(CAN@data) <- "Electoral District Name"
+
+# Create a copy of the original CMA data (only do this once)
+# Always use this to merge, since have to update CMA@data
+ogCANData <- CAN@data
+
+# Read xlsx file
+# Read the sheets separately and remove unnecessary columns
+voterTurnout <- select(as.data.frame(read_excel("FED- vismin, income and voting data.xlsx", sheet = 1)),
+                       -"Electoral District Number")
+income <- select(as.data.frame(read_excel("FED- vismin, income and voting data.xlsx", sheet = 2)),
+                 -"Geo_Code")
+vismin <- select(as.data.frame(read_excel("FED- vismin, income and voting data.xlsx", sheet = 4)),
+                 -"Geo_Code")
+
+# Change names to match with voterTurnout
+names(income) <- c("Province", "Electoral District Name", "Average after-tax household income ($)")
+names(vismin) <- c("Province", "Electoral District Name", "Visible Minority Groups",
+                   "Total", "Male", "Female", "Percentage Female", "Percentage Male")
+
+# Calculate average for income
+income <- income %>%
+  group_by(Province, `Electoral District Name`) %>%
+  summarise(`Average after-tax household income ($)` = mean(`Average after-tax household income ($)`),
+            .groups = 'drop')
 
 # Set color ramp 
 my_colors <- colorRampPalette(brewer.pal(15, 'Dark2'))(15)
@@ -533,6 +566,47 @@ ui <- fluidPage(
              )
     ),
   
+    # Choropleth Filled Tab
+    tabPanel("Voter Turnout", fluid = TRUE,
+             sidebarLayout(
+               sidebarPanel(
+                 
+                 helpText("Changing this does nothing"),
+                 
+                 selectizeInput("yr", 
+                                label = "Year",
+                                choices = list("2011", 
+                                               "2015",
+                                               "2019"),
+                                selected = "2011"
+                 ),
+                 
+                 h4("Indicators"),
+                 
+                 selectizeInput("VisiMin", 
+                                label = "Visible Minority",
+                                choices = unique(vismin$`Visible Minority Groups`),
+                                selected = "West Asian"
+                 ),
+                 
+                 selectizeInput("fillBy",
+                                label = "Choropleth choice",
+                                choices = c("Population", "Electors", "Polling Stations", 
+                                            "Valid Ballots", "Rejected Ballots", "Total Ballots
+                                            Cast", "Average after-tax household income ($)", 
+                                            "Total", "Male", "Female"),
+                                selected = "Population"
+                  )
+                 
+               ),
+               
+               mainPanel(
+                 h1("Federal Voter Turnout by Visibile Minority, 2011"),
+                 leafletOutput("fed", width = 1000, height = 600)
+                 )
+             )
+    ),
+    
     # Debug Tab to check if tables are properly filtering
     tabPanel(
       "Debug", fluid = TRUE,
@@ -776,7 +850,7 @@ server <- function(input, output) {
   })
   
   # This reactive filters the employGen data for the choropleth
-  filtered_EG <- reactive ({
+  filtered_EG <- reactive({
     
     # Require Sex, Age, Generation Status, VisMin, and Income
     req(input$s, input$Age, input$gs, input$VisMin, input$Income)
@@ -788,6 +862,17 @@ server <- function(input, output) {
              `Generation Status` == input$gs)
     
     return(EG)
+  })
+  
+  filtered_VM <- reactive({
+    
+    # VisiMin
+    req(input$VisiMin)
+    
+    # Filter vismin data to one group
+    VM <- filter(vismin, `Visible Minority Groups` == input$VisiMin)
+    
+    return(VM)
   })
   
   # Output ---------------------------------------------------
@@ -1117,6 +1202,87 @@ server <- function(input, output) {
       addLegend(pal = pal, values = ~Population, opacity = 0.7, title = "Number of People", position = "topright")
     
     m
+    
+  })
+  
+  # Choropleth
+  output$fed <- renderLeaflet({
+    
+    # Require filtered_VM(), fillBy
+    req(filtered_VM(), input$fillBy)
+    
+    # Merge the data
+    CAN@data <- left_join(ogCANData, voterTurnout)
+    CAN@data <- left_join(CAN@data, income)
+    CAN@data <- left_join(CAN@data, filtered_VM())
+    
+    # Create the ranges for the bins (8 ranges to fit colour palette)
+    # Find the max value in the selected column and divide by 8 
+    interval <- max(CAN@data[[input$fillBy]])/8
+    
+    # Count the number of significant digits
+    # Subtract one and make it negative (since R counts 1's digit at 0)
+    sd <- (ceiling(log10(interval))-1)*-1
+    
+    # Create the bins
+    bins <- c(round(interval, sd) * 0:7, Inf)
+    
+    # Colour palette for the intervals
+    pal <- colorBin("Blues", domain = CAN@data[[input$fillBy]], bins = bins)
+    
+    # Customize the hovertext over the map
+    hoverText <- sprintf(
+       "<strong>Visible Minority: %s</strong>
+        <br>Province: <em>%s</em>
+        <br>Electoral District Name: <em>%s</em>
+        <br>Population: %d
+        <br>Electors: %d
+        <br>Polling Stations: %d
+        <br>Valid Ballots: %d
+        <br>Valid Ballots %%: %f
+        <br>Rejected Ballots: %d
+        <br>Rejected Ballots %%: %f
+        <br>Total Ballots Cast: %d
+        <br>Voter Turnout %%: %f
+        <br>Average after-tax household income ($): %f
+        <br>Total: %d
+        <br>Male: %d
+        <br>Female: %d
+        <br>Percentage Male: %f
+        <br>Percentage Female: %f", 
+      CAN@data$`Visible Minority Groups`, CAN@data$Province, CAN@data$`Electoral District Name`,
+      CAN@data$Population, CAN@data$Electors, CAN@data$`Polling Stations`, CAN@data$`Valid Ballots`,
+      CAN@data$`Valid Ballots %`, CAN@data$`Rejected Ballots`, CAN@data$`Rejected Ballots %`,
+      CAN@data$`Total Ballots Cast`, CAN@data$`Voter Turnout %`, 
+      CAN@data$`Average after-tax household income ($)`, CAN@data$Total, CAN@data$Male,
+      CAN@data$Female, CAN@data$`Percentage Male`, CAN@data$`Percentage Female`
+    ) %>% lapply(htmltools::HTML)
+    
+    # Create the choropleth
+    map <- leaflet(CAN) %>%
+      setView(-106.3, 56.1, zoom = 2.5) %>%
+      addTiles() %>%
+      addPolygons(
+        fillColor = ~pal(CAN@data[[input$fillBy]]),
+        weight = 2,
+        opacity = 1,
+        fillOpacity = 0.7,
+        highlight = highlightOptions(
+          weight = 5,
+          color = "#666",
+          fillOpacity = 0.7,
+          bringToFront = TRUE
+        ),
+        label = hoverText,
+        labelOptions = labelOptions(
+          style = list("font-weight" = "normal", padding = "3px 8px"),
+          textsize = "12px",
+          direction = "auto"
+        )
+      ) %>%
+      addLegend(pal = pal, values = ~CAN@data[[input$fillBy]], opacity = 0.7, title = input$fillBy, position = "topright")
+    
+    map
     
   })
 }
