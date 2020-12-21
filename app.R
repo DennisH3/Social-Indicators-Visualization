@@ -275,9 +275,9 @@ ui <- fluidPage(
                    Then select from either the Visible Minorities. This will produce 3 column graphs"),
                  plotlyOutput("sBar", inline = TRUE, width = 1000, height = 400),
                  br(),
-                 plotlyOutput("ecplot", inline = TRUE),
+                 plotlyOutput("ecplot", inline = TRUE, width = 1000, height = 400),
                  br(),
-                 plotlyOutput("ecplot2")
+                 plotlyOutput("ecplot2", inline = TRUE, width = 1000, height = 400)
                )
              )
     ),
