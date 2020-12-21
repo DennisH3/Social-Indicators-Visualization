@@ -744,7 +744,7 @@ server <- function(input, output) {
                "Multiple visible minorities 2", "Not a visible minority 2", "Generation Status") %>%
         pivot_longer(c(1:15), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
         pivot_wider(names_from = `Generation Status`, values_from = "Number of People", values_fn = sum) %>%
-        filter(`Visible Minority Groups` %in% input$VM)
+        filter(`Visible Minority Groups` %in% input$VM2)
       
       return(newDT)
     }
@@ -975,7 +975,7 @@ server <- function(input, output) {
       add_trace(y = ~`Second generation`, name = "Second generation") %>%
       add_trace(y = ~`First generation`, name = "First generation") %>%
       add_trace(y = ~`Total - Generation status`, name = "Total - Generation status") %>%
-      layout(title = "Population of Visible Minority Groups by Education, Field of Study and Immigrant Status, 2016", 
+      layout(title = "Population of Visible Minority Groups by Education, Field of Study and Generation Status, 2016", 
              yaxis = list(title = 'Number of People'), barmode = 'group')
     
     fig
