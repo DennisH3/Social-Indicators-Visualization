@@ -2,6 +2,13 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
+# Notes
+# Here is a tutorial for RShiny: https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/
+# For examples of selectizeInput, go to https://shiny.rstudio.com/gallery/selectize-examples.html (ui.R tab)
+# To create a hierarchy of buttons, use conditional panels
+# For graphing help, refer to: https://plotly.com/r/. Note that traces, values to be plotted x, have to be columns.
+# For choropleth/leaflet help, refer to: https://rstudio.github.io/leaflet/json.html
+
 # Install packages
 #install.packages("plotly")
 #install.packages("leaflet")
@@ -22,7 +29,7 @@ library(RColorBrewer)
 # Data loading and preprocessing
 # Should use merge(names(select(read.csv(file1), c(list of columns to keep))) <- c(list of new colnames), names(select(read.csv(file2), c(list of columns to keep))) <- c(list of colnames), all = TRUE) instead.
 # This way, will have only one column for visible minority
-
+# Read 274 and 275 data, merge them, and select which columns to keep.
 ogDT <- select(merge(read.csv("98-400-X2016274_English_CSV_data.csv"), 
                      read.csv("98-400-X2016275_English_CSV_data.csv"), 
                      all = TRUE), 
@@ -84,10 +91,6 @@ CAN@data <- select(CAN@data, "FEDENAME")
 # Rename it to match with VoterTurnout
 names(CAN@data) <- "Electoral District Name"
 
-# Create a copy of the original CMA data (only do this once)
-# Always use this to merge, since have to update CMA@data
-ogCANData <- CAN@data
-
 # Read xlsx file
 # Read the sheets separately and remove unnecessary columns
 voterTurnout <- select(as.data.frame(read_excel("FED- vismin, income and voting data.xlsx", sheet = 1)),
@@ -108,23 +111,34 @@ income <- income %>%
   summarise(`Average after-tax household income ($)` = mean(`Average after-tax household income ($)`),
             .groups = 'drop')
 
+# Create a copy of the original CAN data (only do this once)
+# Always use this to merge, since have to update CAN@data
+# Voter Turnout and income will not change again
+ogCANData <- left_join(CAN@data, voterTurnout)
+ogCANData <- left_join(ogCANData, income)
+
 # Set color ramp 
 my_colors <- colorRampPalette(brewer.pal(15, 'Dark2'))(15)
 
-
-# To create a hierarchy of buttons, use conditional panels
 # Define UI ---------------------------------------------------------------
 ui <- fluidPage(
+  # Title of the app
   titlePanel("Social Inclusion Data Visualization Tool"),
+  
+  # Create the tab panel
   tabsetPanel(
     
+    # Commented on only the first tab, but follow this layout to create more
     # Bar Graphs Tab
     tabPanel("Intersectionality Analyses", fluid = TRUE,
              sidebarLayout(
+               
+               # Specify your widgets here
                sidebarPanel(
                  
                  helpText("Changing this does nothing"),
                  
+                 # These are the drop down menus
                  selectizeInput("year", 
                                 label = "Year",
                                 choices = list("2016", 
@@ -144,7 +158,7 @@ ui <- fluidPage(
                  
                  helpText("Changing this does nothing"),
                  
-                 # Will change to multi-select selective input with limit 6
+                 # This allows for multiple selection, a limit of 6 choices, and start with placeholder text
                  selectizeInput("LM", 
                                 label = "Labour Market", 
                                 choices = list("Employment Income" = 1, 
@@ -157,7 +171,9 @@ ui <- fluidPage(
                                                "Overqualification" = 8,
                                                "Self-employment" = 9,
                                                "Precarious employment" = 10),
-                                options = list(placeholder = 'Please select an option below',
+                                multiple = TRUE,
+                                options = list(maxItems = 6,
+                                               placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
                  ),
@@ -234,6 +250,9 @@ ui <- fluidPage(
                  )
                ),
                
+               # This is the main panel
+               # Visuals will be displayed here
+               # You can also add text, images, etc. here
                mainPanel(
                  h1("Graphs"),
                  h4("To filter the data, please select Geography, Degree, Field of Study, Age, and Sex first.
@@ -267,7 +286,6 @@ ui <- fluidPage(
                  
                  helpText("Changing this does nothing"),
                  
-                 # Will change to multi-select selective input with limit 6
                  selectizeInput("Lm", 
                                 label = "Labour Market", 
                                 choices = list("Employment Income" = 1, 
@@ -280,10 +298,11 @@ ui <- fluidPage(
                                                "Overqualification" = 8,
                                                "Self-employment" = 9,
                                                "Precarious employment" = 10),
-                                options = list(placeholder = 'Please select an option below',
+                                multiple = TRUE,
+                                options = list(maxItems = 6,
+                                               placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
-                                    
                  ),
                  
                  h4("Indicators"),
@@ -364,7 +383,6 @@ ui <- fluidPage(
 
                  helpText("Changing this does nothing"),
 
-                 # Will change to multi-select selective input with limit 6
                  selectizeInput("Lm",
                                 label = "Labour Market",
                                 choices = list("Employment Income" = 1,
@@ -377,7 +395,9 @@ ui <- fluidPage(
                                                "Overqualification" = 8,
                                                "Self-employment" = 9,
                                                "Precarious employment" = 10),
-                                options = list(placeholder = 'Please select an option below',
+                                multiple = TRUE,
+                                options = list(maxItems = 6,
+                                               placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
 
@@ -558,14 +578,22 @@ ui <- fluidPage(
       "Debug", fluid = TRUE,
       h1("Filtered Data Tables"),
       br(),
+      
+      # data frame for vismin*sex
       h2("Data frame for bar graph 1"),
-      dataTableOutput("sDF"), # data frame for vismin*sex
+      dataTableOutput("sDF"), 
+      
+      # filter_data()
       h2("Filtered data for bar graph 2"),
-      dataTableOutput("df"), # filter_data()
+      dataTableOutput("df"), 
+      
+      # filter_data2()
       h2("Filtered data for bar graph 3"),
-      dataTableOutput("df3"), # filter_data2(),
+      dataTableOutput("df3"),
+      
       h2("Data frame for Employment Income Scatter plot"),
-      dataTableOutput("EmI"), # data frame for employment income
+      dataTableOutput("EmI"),
+      
       h2("Data frame for dynamic scatter plot"),
       dataTableOutput("spDF")
     )
@@ -576,19 +604,17 @@ ui <- fluidPage(
 server <- function(input, output) {
   
   # Reactive values ----------------------------------------------------------
+  
   # This reactive filters for sex to build the first column graph on the first tab
   filtered_sex <- reactive({
+    
     # Require geography, degree, field of study, and age inputs
     req(input$geo, input$deg, input$fos, input$age, input$VM)
     
-    # Copy ogDT
-    newDT <- ogDT
-    
     # Filter values
-    newDT <- filter(newDT, Geography == input$geo)
-    newDT <- filter(newDT, Education == input$deg)
-    newDT <- filter(newDT, `Field of Study` == input$fos)
-    newDT <- filter(newDT, Age == input$age)
+    newDT <- ogDT %>%
+      filter(Geography == input$geo, Education == input$deg, `Field of Study` == input$fos, 
+             Age == input$age)
     
     # Remove rows where column 13 (Immigrant Status is NA)
     newDT <- newDT[complete.cases(newDT[ , 13]),]
@@ -604,19 +630,15 @@ server <- function(input, output) {
   })
   
   # This reactive will filter ogDT by inputs for Immigrant Status
-  filtered_data <- reactive(
-    {
+  filtered_data <- reactive({
+    
       # Require geography, degree, field of study, age, and sex inputs
       req(input$geo, input$deg, input$fos, input$age, input$sex)
       
       # Filter values
-      newDT <- ogDT
-
-      newDT <- filter(newDT, Geography == input$geo)
-      newDT <- filter(newDT, Education == input$deg)
-      newDT <- filter(newDT, `Field of Study` == input$fos)
-      newDT <- filter(newDT, Age == input$age)
-      newDT <- filter(newDT, Sex == input$sex)
+      newDT <- ogDT %>% 
+        filter(Geography == input$geo, Education == input$deg, `Field of Study` == input$fos,
+               Age == input$age, Sex == input$sex)
        
       # Remove rows where column 13 (Immigrant Status is NA)
       newDT <- newDT[complete.cases(newDT[ , 13]),]
@@ -641,12 +663,8 @@ server <- function(input, output) {
       req(input$geo, input$deg, input$age, input$sex)
       
       # Filter values
-      newDT <- ogDT
-      
-      newDT <- filter(newDT, Geography == input$geo)
-      newDT <- filter(newDT, Education == input$deg)
-      newDT <- filter(newDT, Age == input$age)
-      newDT <- filter(newDT, Sex == input$sex)
+      newDT <- ogDT %>%
+        filter(Geography == input$geo, Education == input$deg, Age == input$age, Sex == input$sex)
       
       # Remove rows where column 23 (Generation Status is NA)
       newDT <- newDT[complete.cases(newDT[ , 23]),]
@@ -689,8 +707,7 @@ server <- function(input, output) {
     
     # Filter values
     newDT <- lineData %>%
-      filter(`Age groups` %in% input$ag, 
-             Sex %in% input$Sex, 
+      filter(`Age groups` %in% input$ag, Sex %in% input$Sex, 
              `Generation Status` %in% input$gen,
              `Visible minorities` %in% input$VisMi)
     
@@ -707,9 +724,7 @@ server <- function(input, output) {
     }
     
     # Pivot by VisMin
-    newDT <- pivot_wider(newDT, 
-                         names_from = `Visible minorities`, 
-                         values_from = `Average income`)
+    newDT <- pivot_wider(newDT, names_from = `Visible minorities`, values_from = `Average income`)
     
     return(newDT)
   })
@@ -721,11 +736,8 @@ server <- function(input, output) {
     req(input$spSex, input$AgeG, input$genS, input$VisiM, input$inputX, input$inputY)
     
     # Filter the data
-    newDT <- filter(spData,
-                    `Visible Minority` %in% input$VisiM,
-                    Sex %in% input$spSex,
-                    `Generation Status` %in% input$genS,
-                    `Age group` %in% input$AgeG)
+    newDT <- filter(spData,`Visible Minority` %in% input$VisiM, Sex %in% input$spSex,
+                    `Generation Status` %in% input$genS, `Age group` %in% input$AgeG)
     
     # Select the columns to keep
     newDT <- select(newDT, c("Visible Minority", "Ethnic origin", "Place of birth", "Sex",
@@ -761,16 +773,15 @@ server <- function(input, output) {
   })
   
   # Output ---------------------------------------------------
+  
+  # Output data tables for debug
   output$df <- renderDataTable({filtered_data()})
-  
   output$df3 <- renderDataTable({filtered_data2()})
-  
   output$EmI <- renderDataTable({filtered_synData()})
-  
   output$sDF <- renderDataTable({filtered_sex()})
-  
   output$spDF <- renderDataTable({filtered_sp()})
   
+  # Bar graph for ogDT by sex
   output$sBar <- renderPlotly({
     req(filtered_sex())
     
@@ -784,6 +795,7 @@ server <- function(input, output) {
     fig
   })
   
+  # Bar graph for ogDT by Immigrant Status
   output$ecplot <- renderPlotly({
     
     # Require the first filtered ogDT data frame
@@ -799,6 +811,7 @@ server <- function(input, output) {
     fig
    })
   
+  # Bar graph for ogDT by Generation Status
   output$ecplot2 <- renderPlotly({
     
     # Require the second filtered data frame
@@ -815,6 +828,7 @@ server <- function(input, output) {
     fig
   })
   
+  # Static scatter plot
   output$splot <- renderPlotly({
     
     # Require filtered_synData()
@@ -865,7 +879,7 @@ server <- function(input, output) {
     sp
   })
   
-  # line graph
+  # Line graph
   output$lgraph <- renderPlotly({
     
     # Require filtered_lineData
@@ -900,6 +914,7 @@ server <- function(input, output) {
     lp
   })
   
+  # Dynamic scatter plot
   output$dynSP <-renderPlotly({
     
     # Require filtered_sp()
@@ -963,13 +978,21 @@ server <- function(input, output) {
                                                            "Population"))
     
     # Create the ranges for the bins (8 ranges to fit colour palette)
-    # Change bin intervals to make fill more visible
-    bins <- c(0, 8000, 16000, 24000, 32000, 40000, 44000, 48000, Inf)
+    # Find the max value in the selected column and divide by 8 
+    interval <- max(CMA@data$Population)/8
+    
+    # Count the number of significant digits
+    # Subtract one and make it negative (since R counts 1's digit at 0)
+    sd <- (ceiling(log10(interval))-1)*-1
+    
+    # Create the bins
+    bins <- c(round(interval, sd) * 0:7, Inf)
     
     # Colour palette for the intervals
     pal <- colorBin("Purples", domain = CMA$Population, bins = bins, na.color = "#fcfbfd")
     
     # Customize the hovertext over the map
+    # Will need to know some HTML and C syntax. %s is for string values, %d is for decimal numbers
     hoverText <- sprintf(
       "<strong>Visible Minority: %s</strong>
       <br>Geography: <em>%s</em>
@@ -1009,16 +1032,14 @@ server <- function(input, output) {
     m
   })
   
-  # Choropleth
+  # Choropleth for Voter Turnout
   output$fed <- renderLeaflet({
     
     # Require filtered_VM(), fillBy
     req(filtered_VM(), input$fillBy)
     
     # Merge the data
-    CAN@data <- left_join(ogCANData, voterTurnout)
-    CAN@data <- left_join(CAN@data, income)
-    CAN@data <- left_join(CAN@data, filtered_VM())
+    CAN@data <- left_join(ogCANData, filtered_VM())
     
     # Create the ranges for the bins (8 ranges to fit colour palette)
     # Find the max value in the selected column and divide by 8 
