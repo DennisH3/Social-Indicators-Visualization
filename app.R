@@ -3,8 +3,8 @@
 # Date: 11/02/2020
 
 # Install packages
-install.packages("plotly")
-install.packages("leaflet")
+#install.packages("plotly")
+#install.packages("leaflet")
 #Need to conda install r-rgdal
 
 # Load packages
@@ -179,7 +179,9 @@ ui <- fluidPage(
                                                "Overqualification" = 8,
                                                "Self-employment" = 9,
                                                "Precarious employment" = 10),
-                                options = list(placeholder = 'Please select an option below',
+                                multiple = TRUE,
+                                options = list(maxItems = 6,
+                                               placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
                  ),
@@ -324,7 +326,9 @@ ui <- fluidPage(
                                                "Overqualification" = 8,
                                                "Self-employment" = 9,
                                                "Precarious employment" = 10),
-                                options = list(placeholder = 'Please select an option below',
+                                multiple = TRUE,
+                                options = list(maxItems = 6,
+                                               placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
                                     
@@ -439,7 +443,9 @@ ui <- fluidPage(
                                                "Overqualification" = 8,
                                                "Self-employment" = 9,
                                                "Precarious employment" = 10),
-                                options = list(placeholder = 'Please select an option below',
+                                multiple = TRUE,
+                                options = list(maxItems = 6,
+                                               placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
 
