@@ -5,7 +5,7 @@
 # Notes
 # Here is a tutorial for RShiny: https://shiny.rstudio.com/tutorial/written-tutorial/lesson1/
 # For examples of selectizeInput, go to https://shiny.rstudio.com/gallery/selectize-examples.html (ui.R tab)
-# To create a hierarchy of buttons, use conditional panels
+# To create a hierarchy of buttons, use conditional panels (https://shiny.rstudio.com/reference/shiny/1.4.0/conditionalPanel.html)
 # For graphing help, refer to: https://plotly.com/r/. Note that traces, values to be plotted x, have to be columns.
 # For choropleth/leaflet help, refer to: https://rstudio.github.io/leaflet/json.html
 
