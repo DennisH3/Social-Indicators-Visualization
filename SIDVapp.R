@@ -616,8 +616,8 @@ server <- function(input, output) {
       filter(Geography == input$geo, Education == input$deg, `Field of Study` == input$fos, 
              Age == input$age)
     
-    # Remove rows where column 13 (Immigrant Status is NA)
-    newDT <- newDT[complete.cases(newDT[ , 13]),]
+    # Remove rows where Immigrant Status is NA
+    newDT <- newDT[complete.cases(newDT[`Immigrant Status`]),]
     
     # Transform the data frame
     newDT <- newDT %>%
@@ -640,8 +640,8 @@ server <- function(input, output) {
         filter(Geography == input$geo, Education == input$deg, `Field of Study` == input$fos,
                Age == input$age, Sex == input$sex)
        
-      # Remove rows where column 13 (Immigrant Status is NA)
-      newDT <- newDT[complete.cases(newDT[ , 13]),]
+      # Remove rows where Immigrant Status is NA
+      newDT <- newDT[complete.cases(newDT[`Immigrant Status`]),]
       
       # Transform the data
       newDT <- ogDT %>%
@@ -666,8 +666,8 @@ server <- function(input, output) {
       newDT <- ogDT %>%
         filter(Geography == input$geo, Education == input$deg, Age == input$age, Sex == input$sex)
       
-      # Remove rows where column 23 (Generation Status is NA)
-      newDT <- newDT[complete.cases(newDT[ , 23]),]
+      # Remove rows where Generation Status is NA
+      newDT <- newDT[complete.cases(newDT[`Generation Status`]),]
       
       # Transform the data
       newDT <- ogDT %>%
