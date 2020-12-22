@@ -2,12 +2,9 @@
 # Author: Dennis Huynh
 # Date: 11/02/2020
 
-# Next steps:
-# Polish the aesthetics (change checkboxGroups to multi-selective), recreate the last 2 bar graphs
-
 # Install packages
-#install.packages("plotly")
-#install.packages("leaflet")
+install.packages("plotly")
+install.packages("leaflet")
 #Need to conda install r-rgdal
 
 # Load packages
@@ -26,7 +23,9 @@ library(RColorBrewer)
 # Save 302.563824 MB
 # The datatable with the columns of interest (Year, Geography, and the DIM columns)
 
-# Should use merge(names(select(read.csv(file1))) <- c(list of new colnames), names(select(read.csv(file2))) <- c(list of colnames), all = TRUE) instead.
+
+# Data loading and preprocessing
+# Should use merge(names(select(read.csv(file1), c(list of columns to keep))) <- c(list of new colnames), names(select(read.csv(file2), c(list of columns to keep))) <- c(list of colnames), all = TRUE) instead.
 # This way, will have only one column for visible minority
 
 ogDT <- select(merge(read.csv("98-400-X2016274_English_CSV_data.csv"), 
@@ -134,8 +133,9 @@ income <- income %>%
 # Set color ramp 
 my_colors <- colorRampPalette(brewer.pal(15, 'Dark2'))(15)
 
+
 # To create a hierarchy of buttons, use conditional panels
-# Define UI ----
+# Define UI ---------------------------------------------------------------
 ui <- fluidPage(
   titlePanel("Social Inclusion Data Visualization Tool"),
   tabsetPanel(
@@ -205,44 +205,46 @@ ui <- fluidPage(
                  #                selected = "Total - Immigrant Status"
                  # ),
                  
-                 checkboxGroupInput("VM", 
-                                    label = "Visible Minority for Immigrant Status",
-                                    choices = list("Total Visible Minority",
-                                                   "Total visible minority population",
-                                                   "South Asian",
-                                                   "Chinese",
-                                                   "Black",
-                                                   "Filipino",
-                                                   "Latin American",
-                                                   "Arab",
-                                                   "Southeast Asian",
-                                                   "West Asian",
-                                                   "Korean",
-                                                   "Japanese",
-                                                   "Visible minority, n.i.e.",
-                                                   "Multiple visible minorities",
-                                                   "Not a visible minority"),
-                                    selected = "Total Visible Minority"
+                 selectizeInput("VM", 
+                                label = "Visible Minority for Immigrant Status",
+                                choices = list("Total Visible Minority",
+                                               "Total visible minority population",
+                                               "South Asian",
+                                               "Chinese",
+                                               "Black",
+                                               "Filipino",
+                                               "Latin American",
+                                               "Arab",
+                                               "Southeast Asian",
+                                               "West Asian",
+                                               "Korean",
+                                               "Japanese",
+                                               "Visible minority, n.i.e.",
+                                               "Multiple visible minorities",
+                                               "Not a visible minority"),
+                                selected = "Total Visible Minority",
+                                multiple = TRUE
                  ),
                  
-                 checkboxGroupInput("VM2", 
-                                    label = "Visible Minority for Generation Status",
-                                    choices = list("Total Visible Minority 2",
-                                                   "Total visible minority population 2",
-                                                   "South Asian 2",
-                                                   "Chinese",
-                                                   "Black",
-                                                   "Filipino",
-                                                   "Latin American",
-                                                   "Arab",
-                                                   "Southeast Asian 2",
-                                                   "West Asian 2",
-                                                   "Korean",
-                                                   "Japanese",
-                                                   "Visible minority, n.i.e. 2",
-                                                   "Multiple visible minorities 2",
-                                                   "Not a visible minority 2"),
-                                    selected = "Total Visible Minority 2"
+                 selectizeInput("VM2", 
+                                label = "Visible Minority for Generation Status",
+                                choices = list("Total Visible Minority 2",
+                                               "Total visible minority population 2",
+                                               "South Asian 2",
+                                               "Chinese",
+                                               "Black",
+                                               "Filipino",
+                                               "Latin American",
+                                               "Arab",
+                                               "Southeast Asian 2",
+                                               "West Asian 2",
+                                               "Korean",
+                                               "Japanese",
+                                               "Visible minority, n.i.e. 2",
+                                               "Multiple visible minorities 2",
+                                               "Not a visible minority 2"),
+                                selected = "Total Visible Minority 2",
+                                multiple = TRUE
                  ),
                  
                  h4("Sub-populations"),
@@ -259,7 +261,7 @@ ui <- fluidPage(
                                 selected = "Total - Sex"
                  )
 
-                 # 
+                  
                  # selectizeInput("gen", 
                  #                label = "Generation Status",
                  #                choices = unique(ogDT$`Generation Status`),
@@ -311,17 +313,17 @@ ui <- fluidPage(
                  
                  # Will change to multi-select selective input with limit 6
                  selectizeInput("Lm", 
-                                  label = "Labour Market", 
-                                  choices = list("Employment Income" = 1, 
-                                                 "Annual full-time full-year wage" = 2, 
-                                                 "Full-time full year employment" = 3,
-                                                 "Labour force particpation" = 4,
-                                                 "Employment rate" = 5,
-                                                 "Unemployment rate" = 6,
-                                                 "Youth NEET" = 7,
-                                                 "Overqualification" = 8,
-                                                 "Self-employment" = 9,
-                                                 "Precarious employment" = 10),
+                                label = "Labour Market", 
+                                choices = list("Employment Income" = 1, 
+                                               "Annual full-time full-year wage" = 2, 
+                                               "Full-time full year employment" = 3,
+                                               "Labour force particpation" = 4,
+                                               "Employment rate" = 5,
+                                               "Unemployment rate" = 6,
+                                               "Youth NEET" = 7,
+                                               "Overqualification" = 8,
+                                               "Self-employment" = 9,
+                                               "Precarious employment" = 10),
                                 options = list(placeholder = 'Please select an option below',
                                                onInitialize = I('function() { this.setValue(""); }')
                                 )
@@ -339,40 +341,45 @@ ui <- fluidPage(
                  #                
                  # ),
                  
-                 checkboxGroupInput("gen",
+                 selectizeInput("gen",
                                 label = "Generation Status",
                                 choices = sort(unique(synData$`Generation Status`)),
-                                selected = "First generation"
+                                selected = "First generation",
+                                multiple = TRUE
                  ),
                  
                  helpText("This is for the scatter plot"),
                  
-                 checkboxGroupInput("VisM", 
-                                    label = "Visible Minority for Scatter plot",
-                                    choices = unique(synData$`Visible Minority`),
-                                    selected = "South Asian"
+                 selectizeInput("VisM", 
+                                label = "Visible Minority for Scatter plot",
+                                choices = unique(synData$`Visible Minority`),
+                                selected = "South Asian",
+                                multiple = TRUE
                  ),
                  
                  helpText("This is for the line graph"),
                  
-                 checkboxGroupInput("VisMi", 
-                                    label = "Visible Minority for Line Graph",
-                                    choices = unique(lineData$`Visible minorities`),
-                                    selected = "South Asian"
+                 selectizeInput("VisMi", 
+                                label = "Visible Minority for Line Graph",
+                                choices = unique(lineData$`Visible minorities`),
+                                selected = "South Asian",
+                                multiple = TRUE
                  ),
                  
                  h4("Sub-populations"),
                  
-                 checkboxGroupInput("ag", 
+                 selectizeInput("ag", 
                                 label = "Age Group",
                                 choices = unique(synData$`Age groups`),
-                                selected = "15-29"
+                                selected = "15-29",
+                                multiple = TRUE
                  ),
                  
-                 checkboxGroupInput("Sex", 
+                 selectizeInput("Sex", 
                                 label = "Sex",
                                 choices = sort(unique(synData$Sex), decreasing = TRUE),
-                                selected = "Female"
+                                selected = "Female",
+                                multiple = TRUE
                  )
                  
                  # helpText("For the example, only Median total income ($) is provided"),
@@ -464,30 +471,34 @@ ui <- fluidPage(
 
                  h4("Indicators"),
 
-                 checkboxGroupInput("genS",
-                                    label = "Generation Status",
-                                    choices = sort(unique(spData$`Generation Status`)),
-                                    selected = "First generation"
+                 selectizeInput("genS",
+                                label = "Generation Status",
+                                choices = sort(unique(spData$`Generation Status`)),
+                                selected = "First generation",
+                                multiple =  TRUE
                  ),
 
-                 checkboxGroupInput("VisiM",
-                                    label = "Visible Minority",
-                                    choices = unique(spData$`Visible Minority`),
-                                    selected = "Not a visible minority"
+                 selectizeInput("VisiM",
+                                label = "Visible Minority",
+                                choices = unique(spData$`Visible Minority`),
+                                selected = "Not a visible minority",
+                                multiple = TRUE
                  ),
 
                  h4("Sub-populations"),
 
-                 checkboxGroupInput("AgeG",
-                                    label = "Age Group",
-                                    choices = unique(spData$`Age group`),
-                                    selected = "15-29"
+                 selectizeInput("AgeG",
+                                label = "Age Group",
+                                choices = unique(spData$`Age group`),
+                                selected = "15-29",
+                                multiple = TRUE
                  ),
 
-                 checkboxGroupInput("spSex",
-                                    label = "Sex",
-                                    choices = unique(spData$Sex),
-                                    selected = "Female"
+                 selectizeInput("spSex",
+                                label = "Sex",
+                                choices = unique(spData$Sex),
+                                selected = "Female",
+                                multiple = TRUE
                  )
 
                ),
@@ -631,7 +642,7 @@ ui <- fluidPage(
   )
 )
 
-# Define server logic ----
+# Define server logic ---------------------------------------------------------------
 server <- function(input, output) {
   
   # Reactive values ----------------------------------------------------------
