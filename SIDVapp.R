@@ -33,7 +33,36 @@ library(RColorBrewer)
 ogDT <- select(merge(read.csv("98-400-X2016274_English_CSV_data.csv"), 
                      read.csv("98-400-X2016275_English_CSV_data.csv"), 
                      all = TRUE), 
-               c(1, 4, 8, 11, 14, 17:24, 27, 30:38, 41:48))
+               c("CENSUS_YEAR", "GEO_NAME", "DIM..Highest.certificate..diploma.or.degree..15.", 
+                 "DIM..Age..9.", "DIM..Sex..3.", 
+                 "Dim..Visible.minority..15...Member.ID...4...Chinese",
+                 "Dim..Visible.minority..15...Member.ID...5...Black", 
+                 "Dim..Visible.minority..15...Member.ID...6...Filipino",
+                 "Dim..Visible.minority..15...Member.ID...7...Latin.American",
+                 "Dim..Visible.minority..15...Member.ID...8...Arab",
+                 "Dim..Visible.minority..15...Member.ID...11...Korean",
+                 "Dim..Visible.minority..15...Member.ID...12...Japanese",
+                 "DIM..Immigrant.status..4.",
+                 "DIM..Major.field.of.study...Classification.of.Instructional.Programs..CIP..2016..43.",
+                 "Dim..Visible.minority..15...Member.ID...1...Total...Visible.minority..Note..11.",
+                 "Dim..Visible.minority..15...Member.ID...2...Total.visible.minority.population..Note..12.",
+                 "Dim..Visible.minority..15...Member.ID...3...South.Asian..Note..13.",
+                 "Dim..Visible.minority..15...Member.ID...9...Southeast.Asian..Note..14.",
+                 "Dim..Visible.minority..15...Member.ID...10...West.Asian..Note..15.",
+                 "Dim..Visible.minority..15...Member.ID...13...Visible.minority..n.i.e...Note..16.",
+                 "Dim..Visible.minority..15...Member.ID...14...Multiple.visible.minorities..Note..17.",
+                 "Dim..Visible.minority..15...Member.ID...15...Not.a.visible.minority..Note..18.",
+                 "DIM..Generation.status..4.",
+                 "Dim..Visible.minority..15...Member.ID...1...Total...Visible.minority..Note..10.",
+                 "Dim..Visible.minority..15...Member.ID...2...Total.visible.minority.population..Note..11.",
+                 "Dim..Visible.minority..15...Member.ID...3...South.Asian..Note..12.",
+                 "Dim..Visible.minority..15...Member.ID...9...Southeast.Asian..Note..13.",
+                 "Dim..Visible.minority..15...Member.ID...10...West.Asian..Note..14.",
+                 "Dim..Visible.minority..15...Member.ID...13...Visible.minority..n.i.e...Note..15.",
+                 "Dim..Visible.minority..15...Member.ID...14...Multiple.visible.minorities..Note..16.",
+                 "Dim..Visible.minority..15...Member.ID...15...Not.a.visible.minority..Note..17."
+                 )
+               )
 
 # Rename the columns
 setnames(ogDT, colnames(ogDT), c("Year", "Geography", "Education", "Age", "Sex", "Chinese", "Black", "Filipino", "Latin American",
@@ -624,8 +653,16 @@ server <- function(input, output) {
     
     # Transform the data frame
     newDT <- newDT %>%
-      select(c(1:22)) %>%
-      pivot_longer(c(6:12, 15:22), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
+      select(c("Year", "Geography", "Education", "Age", "Sex", "Chinese", "Black", "Filipino", "Latin American",
+               "Arab", "Korean", "Japanese", "Immigrant Status", "Field of Study", "Total Visible Minority",
+               "Total visible minority population", "South Asian", "Southeast Asian", "West Asian", 
+               "Visible minority, n.i.e.", "Multiple visible minorities", "Not a visible minority")) %>%
+      pivot_longer(c("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
+                     "Total Visible Minority", "Total visible minority population", "South Asian", 
+                     "Southeast Asian", "West Asian", "Visible minority, n.i.e.", 
+                     "Multiple visible minorities", "Not a visible minority"), 
+                   names_to = "Visible Minority Groups", 
+                   values_to = "Number of People") %>%
       pivot_wider(names_from = Sex, values_from = "Number of People", values_fn = sum) %>%
       filter(`Visible Minority Groups` %in% input$VM)
     
@@ -652,7 +689,12 @@ server <- function(input, output) {
                "Total Visible Minority", "Total visible minority population", "South Asian", 
                "Southeast Asian", "West Asian", "Visible minority, n.i.e.", "Multiple visible minorities", 
                "Not a visible minority", "Immigrant Status") %>%
-        pivot_longer(c(1:15), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
+        pivot_longer(c("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
+                       "Total Visible Minority", "Total visible minority population", "South Asian", 
+                       "Southeast Asian", "West Asian", "Visible minority, n.i.e.", 
+                       "Multiple visible minorities", "Not a visible minority"), 
+                     names_to = "Visible Minority Groups", 
+                     values_to = "Number of People") %>%
         pivot_wider(names_from = `Immigrant Status`, values_from = "Number of People", values_fn = sum) %>%
         filter(`Visible Minority Groups` %in% input$VM) 
       
@@ -678,7 +720,12 @@ server <- function(input, output) {
                "Total Visible Minority 2", "Total visible minority population 2", "South Asian 2", 
                "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
                "Multiple visible minorities 2", "Not a visible minority 2", "Generation Status") %>%
-        pivot_longer(c(1:15), names_to = "Visible Minority Groups", values_to = "Number of People") %>%
+        pivot_longer(c("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
+                       "Total Visible Minority 2", "Total visible minority population 2", "South Asian 2", 
+                       "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
+                       "Multiple visible minorities 2", "Not a visible minority 2"), 
+                     names_to = "Visible Minority Groups", 
+                     values_to = "Number of People") %>%
         pivot_wider(names_from = `Generation Status`, values_from = "Number of People", values_fn = sum) %>%
         filter(`Visible Minority Groups` %in% input$VM2)
       
