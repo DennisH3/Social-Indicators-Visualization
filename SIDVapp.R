@@ -1029,16 +1029,8 @@ server <- function(input, output) {
                                                            "Total income groups", "Generation Status",
                                                            "Population"))
     
-    # Create the ranges for the bins (8 ranges to fit colour palette)
-    # Find the max value in the selected column and divide by 8 
-    interval <- max(CMA@data$Population)/8
-    
-    # Count the number of significant digits
-    # Subtract one and make it negative (since R counts 1's digit at 0)
-    sd <- (ceiling(log10(interval))-1)*-1
-    
     # Create the bins
-    bins <- c(round(interval, sd) * 0:7, Inf)
+    bins <- c(0, 8000, 16000, 24000, 32000, 40000, 48000, 56000, Inf)
     
     # Colour palette for the intervals
     pal <- colorBin("Purples", domain = CMA$Population, bins = bins, na.color = "#fcfbfd")
