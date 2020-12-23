@@ -594,6 +594,9 @@ ui <- fluidPage(
       h2("Data frame for Employment Income Scatter plot"),
       dataTableOutput("EmI"),
       
+      h2("Data frame for line graph"),
+      dataTableOutput("lgDF"),
+      
       h2("Data frame for dynamic scatter plot"),
       dataTableOutput("spDF")
     )
@@ -775,11 +778,13 @@ server <- function(input, output) {
   # Output ---------------------------------------------------
   
   # Output data tables for debug
+  output$sDF <- renderDataTable({filtered_sex()})
   output$df <- renderDataTable({filtered_data()})
   output$df3 <- renderDataTable({filtered_data2()})
   output$EmI <- renderDataTable({filtered_synData()})
-  output$sDF <- renderDataTable({filtered_sex()})
+  output$lgDF <- renderDataTable({filtered_lineData()})
   output$spDF <- renderDataTable({filtered_sp()})
+  
   
   # Bar graph for ogDT by sex
   output$sBar <- renderPlotly({
