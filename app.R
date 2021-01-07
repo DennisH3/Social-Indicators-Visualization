@@ -201,12 +201,6 @@ ui <- fluidPage(
                                 selected = "Total - Major field of study - Classification of Instructional Programs (CIP) 2016"
                  ),
                  
-                 # selectizeInput("immStatus",
-                 #                label = "Immigrant Status",
-                 #                choices = unique(ogDT$`Immigrant Status`),
-                 #                selected = "Total - Immigrant Status"
-                 # ),
-                 
                  selectizeInput("VM", 
                                 label = "Visible Minority for Immigrant Status",
                                 choices = list("Total Visible Minority",
@@ -250,6 +244,12 @@ ui <- fluidPage(
                  ),
                  
                  h4("Sub-populations"),
+                 
+                 selectizeInput("immStatus",
+                                label = "Immigrant Status",
+                                choices = unique(ogDT$`Immigrant Status`),
+                                selected = "Total - Immigrant Status"
+                 ),
                  
                  selectizeInput("age", 
                                 label = "Age Group",
@@ -654,8 +654,8 @@ server <- function(input, output) {
   # Reactive values ----------------------------------------------------------
   # This reactive filters for sex to build the first column graph on the first tab
   filtered_sex <- reactive({
-    # Require geography, degree, field of study, and age inputs
-    req(input$geo, input$deg, input$fos, input$age, input$VM)
+    # Require geography, degree, field of study, immigrant status and age inputs
+    req(input$geo, input$deg, input$fos, input$age, input$VM, input$immStatus)
     
     # Copy ogDT
     newDT <- ogDT
@@ -665,6 +665,7 @@ server <- function(input, output) {
     newDT <- filter(newDT, Education == input$deg)
     newDT <- filter(newDT, `Field of Study` == input$fos)
     newDT <- filter(newDT, Age == input$age)
+    newDT <- filter(newDT, `Immigrant` == input$immStatus)
     
     # Remove rows where column 13 (Immigrant Status is NA)
     newDT <- newDT[complete.cases(newDT[ , 13]),]
@@ -698,7 +699,7 @@ server <- function(input, output) {
       # newDT <- newDT[complete.cases(newDT[ , 13]),]
       
       # Transform the data
-      newDT <- ogDT %>%
+      newDT <- newDT %>%
         select("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
                "Total Visible Minority", "Total visible minority population", "South Asian", 
                "Southeast Asian", "West Asian", "Visible minority, n.i.e.", "Multiple visible minorities", 
@@ -754,7 +755,7 @@ server <- function(input, output) {
       newDT <- newDT[complete.cases(newDT[ , 23]),]
       
       # Transform the data
-      newDT <- ogDT %>%
+      newDT <- newDT %>%
         select("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
                "Total Visible Minority 2", "Total visible minority population 2", "South Asian 2", 
                "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
