@@ -266,6 +266,11 @@ ui <- fluidPage(
                  
                  h4("Sub-populations"),
                  
+                 selectizeInput("immStatus",
+                                label = "Immigrant Status",
+                                choices = unique(ogDT$`Immigrant Status`),
+                                selected = "Total - Immigrant status"),
+                 
                  selectizeInput("age", 
                                 label = "Age Group",
                                 choices = unique(ogDT$Age),
@@ -640,13 +645,13 @@ server <- function(input, output) {
   # This reactive filters for sex to build the first column graph on the first tab
   filtered_sex <- reactive({
     
-    # Require geography, degree, field of study, and age inputs
-    req(input$geo, input$deg, input$fos, input$age, input$VM)
+    # Require geography, degree, field of study, immigrant status, and age inputs
+    req(input$geo, input$deg, input$fos, input$age, input$VM, input$immStatus)
     
     # Filter values
     newDT <- ogDT %>%
       filter(Geography == input$geo, Education == input$deg, `Field of Study` == input$fos, 
-             Age == input$age)
+             Age == input$age, `Immigrant Status` == input$immStatus)
     
     # Remove rows where Immigrant Status is NA
     newDT <- newDT[complete.cases(newDT["Immigrant Status"]),]
@@ -684,7 +689,7 @@ server <- function(input, output) {
       newDT <- newDT[complete.cases(newDT["Immigrant Status"]),]
       
       # Transform the data
-      newDT <- ogDT %>%
+      newDT <- newDT %>%
         select("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
                "Total Visible Minority", "Total visible minority population", "South Asian", 
                "Southeast Asian", "West Asian", "Visible minority, n.i.e.", "Multiple visible minorities", 
@@ -715,7 +720,7 @@ server <- function(input, output) {
       newDT <- newDT[complete.cases(newDT["Generation Status"]),]
       
       # Transform the data
-      newDT <- ogDT %>%
+      newDT <- newDT %>%
         select("Chinese", "Black", "Filipino", "Latin American", "Arab", "Korean", "Japanese", 
                "Total Visible Minority 2", "Total visible minority population 2", "South Asian 2", 
                "Southeast Asian 2", "West Asian 2", "Visible minority, n.i.e. 2", 
